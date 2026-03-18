@@ -1631,6 +1631,30 @@ def _build_overpass_ql(*, bbox: BBox4, filters: List[str], name_clause: str) -> 
     )
 
 
+def _build_overpass_ql_tiled(*, bbox: BBox4, filters: List[str], name_clause: str) -> str:
+    """Like _build_overpass_ql but with a short server-side timeout (8s).
+
+    Tile queries are small bbox areas — they should be fast.  If Overpass
+    is slow, we'd rather skip a tile than block the whole corridor pipeline.
+    """
+    bbox_str = _overpass_bbox_str(bbox)
+    parts: List[str] = []
+    if not filters:
+        parts.append(f'node{name_clause}{bbox_str};')
+        parts.append(f'way{name_clause}{bbox_str};')
+    else:
+        for f in filters:
+            parts.append(f'node{name_clause}{f}{bbox_str};')
+            parts.append(f'way{name_clause}{f}{bbox_str};')
+    return (
+        f'[out:json][timeout:8][maxsize:8000000];'
+        f'('
+        f'{"".join(parts)}'
+        f');'
+        f'out center;'
+    )
+
+
 def _build_overpass_around_ql(
     *,
     coords: List[Tuple[float, float]],
@@ -1681,10 +1705,10 @@ def _build_overpass_around_ql(
     )
 
 
-def _fetch_overpass_with_retries(*, client: Any, ql: str, label: str = "places") -> Dict[str, Any]:
+def _fetch_overpass_with_retries(*, client: Any, ql: str, label: str = "places", timeout_s: float | None = None) -> Dict[str, Any]:
     """Delegate to global Overpass gate (client arg ignored for back-compat)."""
     from app.core.overpass import overpass_fetch_sync
-    return overpass_fetch_sync(ql, label=label)
+    return overpass_fetch_sync(ql, label=label, timeout_s=timeout_s)
 
 
 def _safe_overpass_name_regex(q: str) -> str:
@@ -3354,8 +3378,8 @@ class Places:
                 if self.store.tile_is_fresh(tile_key=tile_key, ttl_s=ttl_s):
                     continue
 
-                ql = _build_overpass_ql(bbox=tb, filters=filters, name_clause=name_clause)
-                data = _fetch_overpass_with_retries(client=None, ql=ql, label="tile")  # type: ignore[arg-type]
+                ql = _build_overpass_ql_tiled(bbox=tb, filters=filters, name_clause=name_clause)
+                data = _fetch_overpass_with_retries(client=None, ql=ql, label="tile", timeout_s=12.0)
 
                 fetched_items: List[PlaceItem] = []
                 got = 0

@@ -126,20 +126,24 @@ def _rest_key(polyline6: str, sample_interval_km: float, buffer_km: float, algo_
 # ──────────────────────────────────────────────────────────────
 
 
+# Dedicated Overpass instances for lightweight overlay queries.
+# These are SEPARATE from the instances used by places.py (the global gate)
+# to avoid contention — places fires dozens of heavy tile queries that
+# saturate the main instances.
+_OVERLAY_OVERPASS_URLS = [
+    "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
+    "https://overpass-api.de/api/interpreter",
+]
+
+
 async def _fetch_overpass(*, client: httpx.AsyncClient, ql: str) -> Dict[str, Any]:
-    """Direct Overpass query — bypasses the global gate to avoid queuing
-    behind the heavy places.py tile fetches.  These are small bbox queries
-    that complete in 2-5s."""
-    from app.core.settings import settings
-    urls = [
-        settings.overpass_url,
-        *(getattr(settings, "overpass_fallback_urls", None) or []),
-    ]
-    for url in urls:
+    """Direct Overpass query using dedicated instances (not shared with places.py)."""
+    for url in _OVERLAY_OVERPASS_URLS:
         try:
             resp = await client.post(
                 url, data={"data": ql},
-                timeout=httpx.Timeout(20.0, connect=10.0),
+                timeout=httpx.Timeout(15.0, connect=8.0),
             )
             if resp.status_code in (429, 502, 503, 504):
                 logger.warning("rest_areas: Overpass %s returned %d, trying next", url, resp.status_code)

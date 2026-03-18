@@ -39,7 +39,7 @@ from app.core.contracts import RoadBlackSpot, SpeedCamera, RoadOccupancy, SpeedC
 from app.core.settings import settings
 from app.core.storage import get_cameras_pack, put_cameras_pack
 from app.core.time import utc_now_iso
-from app.core.geo import bbox_from_coords, bbox_overlaps, decode_polyline6, haversine_km, min_dist_to_route, sample_route
+from app.core.geo import bbox_from_coords, bbox_overlaps, decode_polyline6, haversine_km, min_dist_to_route, sample_route, RouteGrid
 from app.core.http_client import http_client
 from app.core.cache_utils import is_fresh, stable_key
 
@@ -210,7 +210,7 @@ async def _fetch_nsw_cameras(
     min_lng: float,
     max_lat: float,
     max_lng: float,
-    route_samples: List[Tuple[float, float]],
+    rgrid: "RouteGrid",
     warnings: List[str],
 ) -> List[SpeedCamera]:
     """Query NSW TfNSW Speed Cameras ArcGIS FeatureServer within bbox."""
@@ -256,7 +256,7 @@ async def _fetch_nsw_cameras(
             road = str(attrs.get("road") or "").strip() or None
             suburb = str(attrs.get("suburb_town") or "").strip() or None
             location_desc = location or road or "Unknown location"
-            dist_km = min_dist_to_route(lat, lng, route_samples)
+            dist_km = rgrid.dist(lat, lng)
 
             cameras.append(SpeedCamera(
                 id=_make_camera_id("nsw_tfnsw", lat, lng),
@@ -284,7 +284,7 @@ async def _fetch_qld_cameras(
     min_lng: float,
     max_lat: float,
     max_lng: float,
-    route_samples: List[Tuple[float, float]],
+    rgrid: "RouteGrid",
     warnings: List[str],
 ) -> List[SpeedCamera]:
     """
@@ -357,7 +357,7 @@ async def _fetch_qld_cameras(
 
     for item in all_cameras:
         lat, lng = item["lat"], item["lng"]
-        dist_km = min_dist_to_route(lat, lng, route_samples)
+        dist_km = rgrid.dist(lat, lng)
         location_desc = item.get("location") or "Queensland"
         if item.get("maxspeed"):
             location_desc = f"{location_desc} ({item['maxspeed']} km/h)".strip(" ()")
@@ -385,7 +385,7 @@ async def _fetch_act_cameras(
     min_lng: float,
     max_lat: float,
     max_lng: float,
-    route_samples: List[Tuple[float, float]],
+    rgrid: "RouteGrid",
     warnings: List[str],
 ) -> List[SpeedCamera]:
     """
@@ -468,7 +468,7 @@ async def _fetch_act_cameras(
         lat, lng = item["lat"], item["lng"]
         if not (min_lat <= lat <= max_lat and min_lng <= lng <= max_lng):
             continue
-        dist_km = min_dist_to_route(lat, lng, route_samples)
+        dist_km = rgrid.dist(lat, lng)
         cameras.append(SpeedCamera(
             id=_make_camera_id("act", lat, lng),
             source="act_cameras",
@@ -566,7 +566,7 @@ async def _fetch_qld_black_spots(
     min_lng: float,
     max_lat: float,
     max_lng: float,
-    route_samples: List[Tuple[float, float]],
+    rgrid: "RouteGrid",
     warnings: List[str],
 ) -> List[RoadBlackSpot]:
     """
@@ -613,10 +613,7 @@ async def _fetch_qld_black_spots(
         if not (min_lat <= lat <= max_lat and min_lng <= lng <= max_lng):
             continue
 
-        dist_km = min(
-            haversine_km((lat, lng), (rlat, rlng))
-            for rlat, rlng in route_samples
-        ) if route_samples else None
+        dist_km = rgrid.dist(lat, lng)
 
         site_id = str(props.get("site_id") or props.get("SITE_ID") or props.get("id") or "")
         spot_id = base64.urlsafe_b64encode(
@@ -642,7 +639,7 @@ async def _fetch_qld_black_spots(
             lat=lat,
             lng=lng,
             crash_count=crash_count,
-            distance_from_route_km=round(dist_km, 2) if dist_km is not None else None,
+            distance_from_route_km=round(dist_km, 2),
         ))
 
     logger.info("speed_cameras: QLD black spots in-bbox=%d", len(spots))
@@ -717,6 +714,7 @@ class SpeedCameras:
             return overlay
 
         route_samples = sample_route(coords, interval_km=2.0)
+        rgrid = RouteGrid(route_samples)
         min_lat, min_lng, max_lat, max_lng = bbox_from_coords(coords, buffer_km)
         warnings: List[str] = []
 
@@ -747,19 +745,19 @@ class SpeedCameras:
                 task_labels.append("nsw")
                 tasks.append(_fetch_nsw_cameras(
                     client, min_lat, min_lng, max_lat, max_lng,
-                    route_samples, warnings,
+                    rgrid, warnings,
                 ))
             if include_qld:
                 task_labels.append("qld")
                 tasks.append(_fetch_qld_cameras(
                     client, self.conn, min_lat, min_lng, max_lat, max_lng,
-                    route_samples, warnings,
+                    rgrid, warnings,
                 ))
             if include_act:
                 task_labels.append("act")
                 tasks.append(_fetch_act_cameras(
                     client, self.conn, min_lat, min_lng, max_lat, max_lng,
-                    route_samples, warnings,
+                    rgrid, warnings,
                 ))
             if include_brisbane:
                 task_labels.append("brisbane")
@@ -768,7 +766,7 @@ class SpeedCameras:
                 task_labels.append("qld_black_spots")
                 tasks.append(_fetch_qld_black_spots(
                     client, self.conn, min_lat, min_lng, max_lat, max_lng,
-                    route_samples, warnings,
+                    rgrid, warnings,
                 ))
 
             results = await asyncio.gather(*tasks, return_exceptions=True)

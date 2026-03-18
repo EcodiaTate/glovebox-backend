@@ -22,7 +22,7 @@ from app.core.polyline6 import decode_polyline6
 from app.core.settings import settings
 from app.core.storage import get_rest_area_pack, put_rest_area_pack
 from app.core.time import utc_now_iso
-from app.core.geo import bbox_from_coords, haversine_km, min_dist_to_route_with_km
+from app.core.geo import bbox_from_coords, haversine_km, min_dist_to_route_with_km, RouteGrid
 from app.core.http_client import http_client
 from app.core.cache_utils import is_fresh
 
@@ -277,33 +277,27 @@ _GOV_CACHE_TTL = 3600.0
 _gov_cache: Dict[str, Tuple[float, List["RestArea"]]] = {}
 _gov_cache_lock = threading.Lock()
 
-_QLD_BASE = (
+_QLD_BASE_URL = (
     "https://spatial-gis.information.qld.gov.au/arcgis/rest/services"
     "/Transportation/StateRoadInformation/MapServer/17/query"
-    "?where=1%3D1&outFields=*&f=geojson"
-    "&resultRecordCount=1000&resultOffset={offset}"
 )
 
 _WA_ENDPOINTS: Dict[str, str] = {
     "major": (
         "https://gisservices.mainroads.wa.gov.au/arcgis/rest/services"
         "/OpenData/HVS_Networks_DataPortal/MapServer/2/query"
-        "?where=1%3D1&outFields=*&f=geojson"
     ),
     "minor": (
         "https://gisservices.mainroads.wa.gov.au/arcgis/rest/services"
         "/OpenData/HVS_Networks_DataPortal/MapServer/3/query"
-        "?where=1%3D1&outFields=*&f=geojson"
     ),
     "heavy_vehicle": (
         "https://gisservices.mainroads.wa.gov.au/arcgis/rest/services"
         "/OpenData/HVS_Networks_DataPortal/MapServer/1/query"
-        "?where=1%3D1&outFields=*&f=geojson"
     ),
     "road_stopping": (
         "https://gisservices.mainroads.wa.gov.au/arcgis/rest/services"
         "/OpenData/RoadAssets_DataPortal/MapServer/19/query"
-        "?where=1%3D1&outFields=*&f=geojson"
     ),
 }
 
@@ -367,18 +361,32 @@ def _gov_cache_set(key: str, areas: List[RestArea]) -> None:
         _gov_cache[key] = (time.monotonic(), areas)
 
 
-async def _fetch_qld_rest_areas(client: httpx.AsyncClient) -> List[RestArea]:
-    """Fetch QLD government rest areas (paginated ArcGIS MapServer)."""
-    cached = _gov_cache_get("qld")
+async def _fetch_qld_rest_areas(
+    client: httpx.AsyncClient,
+    bbox: Optional[Tuple[float, float, float, float]] = None,
+) -> List[RestArea]:
+    """Fetch QLD government rest areas (ArcGIS MapServer with optional bbox)."""
+    cache_key = f"qld_{bbox[0]:.2f}_{bbox[1]:.2f}_{bbox[2]:.2f}_{bbox[3]:.2f}" if bbox else "qld"
+    cached = _gov_cache_get(cache_key)
     if cached is not None:
         logger.info("rest_areas: QLD cache hit (%d areas)", len(cached))
         return cached
 
     features: List[Dict[str, Any]] = []
 
+    params: Dict[str, str] = {
+        "where": "1=1", "outFields": "*", "f": "geojson",
+        "resultRecordCount": "1000",
+    }
+    if bbox:
+        params["geometry"] = f"{bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]}"
+        params["geometryType"] = "esriGeometryEnvelope"
+        params["inSR"] = "4326"
+        params["spatialRel"] = "esriSpatialRelIntersects"
+
     async def _get_page(offset: int) -> List[Dict[str, Any]]:
-        url = _QLD_BASE.format(offset=offset)
-        r = await client.get(url, timeout=_GOV_TIMEOUT)
+        p = {**params, "resultOffset": str(offset)}
+        r = await client.get(_QLD_BASE_URL, params=p, timeout=_GOV_TIMEOUT)
         r.raise_for_status()
         return r.json().get("features") or []
 
@@ -437,16 +445,23 @@ async def _fetch_qld_rest_areas(client: httpx.AsyncClient) -> List[RestArea]:
         ))
 
     logger.info("rest_areas: QLD fetched %d features → %d areas", len(features), len(areas))
-    _gov_cache_set("qld", areas)
+    _gov_cache_set(cache_key, areas)
     return areas
 
 
-async def _fetch_wa_rest_areas(client: httpx.AsyncClient) -> List[RestArea]:
+async def _fetch_wa_rest_areas(
+    client: httpx.AsyncClient,
+    bbox: Optional[Tuple[float, float, float, float]] = None,
+) -> List[RestArea]:
     """Fetch WA government rest areas from 4 MainRoads endpoints concurrently.
 
+    bbox = (min_lng, min_lat, max_lng, max_lat) — when provided, passed to
+    ArcGIS as a spatial envelope filter so only nearby features are returned.
     The host may block non-AU IPs — any request failure is silently skipped.
     """
-    cached = _gov_cache_get("wa")
+    # Cache key includes bbox so different routes get different cached results
+    cache_key = f"wa_{bbox[0]:.2f}_{bbox[1]:.2f}_{bbox[2]:.2f}_{bbox[3]:.2f}" if bbox else "wa"
+    cached = _gov_cache_get(cache_key)
     if cached is not None:
         logger.info("rest_areas: WA cache hit (%d areas)", len(cached))
         return cached
@@ -459,9 +474,17 @@ async def _fetch_wa_rest_areas(client: httpx.AsyncClient) -> List[RestArea]:
         "road_stopping":  (0, False),
     }
 
+    # Build query params — bbox filter when available
+    params: Dict[str, str] = {"where": "1=1", "outFields": "*", "f": "geojson"}
+    if bbox:
+        params["geometry"] = f"{bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]}"
+        params["geometryType"] = "esriGeometryEnvelope"
+        params["inSR"] = "4326"
+        params["spatialRel"] = "esriSpatialRelIntersects"
+
     async def _fetch_tier(tier: str, url: str) -> Tuple[str, List[Dict[str, Any]]]:
         try:
-            r = await client.get(url, timeout=_GOV_TIMEOUT)
+            r = await client.get(url, params=params, timeout=_GOV_TIMEOUT)
             if not r.is_success:
                 logger.warning("rest_areas: WA tier=%s returned HTTP %d — skipping", tier, r.status_code)
                 return tier, []
@@ -531,7 +554,7 @@ async def _fetch_wa_rest_areas(client: httpx.AsyncClient) -> List[RestArea]:
 
     total_feats = sum(len(f) for f in tier_features.values())
     logger.info("rest_areas: WA fetched %d features → %d areas", total_feats, len(areas))
-    _gov_cache_set("wa", areas)
+    _gov_cache_set(cache_key, areas)
     return areas
 
 
@@ -626,17 +649,18 @@ async def _fetch_nsw_rest_areas(
 # ──────────────────────────────────────────────────────────────
 
 def _dedup(areas: List[RestArea], merge_km: float = 0.05) -> List[RestArea]:
-    """Remove duplicate rest areas within merge_km of each other (keep higher quality)."""
-    seen: List[RestArea] = []
+    """Remove duplicate rest areas within merge_km of each other (keep higher quality).
+
+    Uses a grid-cell approach for O(N) performance instead of O(N²).
+    """
+    # ~50m merge → grid cells of ~0.0005° ≈ 55m
+    res = max(0.0005, merge_km / 111.0)
+    grid: Dict[Tuple[int, int], RestArea] = {}
     for area in sorted(areas, key=lambda a: -a.quality_score):
-        too_close = False
-        for s in seen:
-            if haversine_km((area.lat, area.lng), (s.lat, s.lng)) < merge_km:
-                too_close = True
-                break
-        if not too_close:
-            seen.append(area)
-    return seen
+        key = (int(area.lat / res), int(area.lng / res))
+        if key not in grid:
+            grid[key] = area
+    return list(grid.values())
 
 
 # ──────────────────────────────────────────────────────────────
@@ -786,8 +810,8 @@ class RestAreas:
         async with http_client(timeout=max(float(settings.overpass_timeout_s), 30.0)) as client:
             results = await asyncio.gather(
                 _fetch_overpass(client=client, ql=ql),
-                _fetch_qld_rest_areas(client),
-                _fetch_wa_rest_areas(client),
+                _fetch_qld_rest_areas(client, bbox=bbox),
+                _fetch_wa_rest_areas(client, bbox=bbox),
                 _fetch_nsw_rest_areas(client, bbox),
                 return_exceptions=True,
             )
@@ -814,23 +838,25 @@ class RestAreas:
         elif isinstance(results[3], list):
             nsw_rest_areas = results[3]
 
+        # Build spatial grid index for fast nearest-sample lookups
+        grid = RouteGrid(samples)
+
         # Parse and corridor-filter Overpass results
         for el in overpass_result.get("elements") or []:
             area = _parse_element(el)
             if area is None:
                 continue
-            dist_km, km_along = min_dist_to_route_with_km(area.lat, area.lng, samples)
+            dist_km, km_along = grid.dist_and_km(area.lat, area.lng)
             if dist_km > buffer_km:
                 continue
             area.distance_from_route_km = round(dist_km, 2)
             area.km_along = round(km_along, 2)
             raw_areas.append(area)
 
-        # Bbox + corridor-filter government results (QLD, WA, NSW)
+        # Corridor-filter government results (QLD, WA, NSW)
+        # API calls already bbox-filtered, so just check distance
         for area in (*qld_areas, *wa_areas, *nsw_rest_areas):
-            if not (min_lat <= area.lat <= max_lat and min_lng <= area.lng <= max_lng):
-                continue
-            dist_km, km_along = min_dist_to_route_with_km(area.lat, area.lng, samples)
+            dist_km, km_along = grid.dist_and_km(area.lat, area.lng)
             if dist_km > buffer_km:
                 continue
             area.distance_from_route_km = round(dist_km, 2)

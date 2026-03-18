@@ -57,6 +57,72 @@ def min_dist_to_route(
     return best
 
 
+class RouteGrid:
+    """
+    Spatial grid index over route samples for O(1) nearest-sample lookups.
+
+    Divides the route bounding box into ~0.1° cells (~11km), storing sample
+    indices per cell.  To find the nearest sample to a query point, only
+    samples in the 9 neighbouring cells are checked instead of all M samples.
+    """
+
+    __slots__ = ("_samples", "_grid", "_res", "_has_km")
+
+    def __init__(
+        self,
+        samples: list,
+        resolution: float = 0.1,
+    ) -> None:
+        self._samples = samples
+        self._res = resolution
+        self._has_km = len(samples) > 0 and len(samples[0]) >= 3
+        grid: Dict[Tuple[int, int], List[int]] = {}
+        for i, s in enumerate(samples):
+            key = (int(s[0] / resolution), int(s[1] / resolution))
+            grid.setdefault(key, []).append(i)
+        self._grid = grid
+
+    def nearest(self, lat: float, lng: float) -> Tuple[float, Optional[float]]:
+        """Return (distance_km, km_along_or_None) for nearest sample."""
+        r = self._res
+        ci, cj = int(lat / r), int(lng / r)
+        best_dist = float("inf")
+        best_km: Optional[float] = None
+        pt = (lat, lng)
+        samples = self._samples
+        has_km = self._has_km
+        for di in (-1, 0, 1):
+            for dj in (-1, 0, 1):
+                bucket = self._grid.get((ci + di, cj + dj))
+                if bucket is None:
+                    continue
+                for idx in bucket:
+                    s = samples[idx]
+                    d = haversine_km(pt, (s[0], s[1]))
+                    if d < best_dist:
+                        best_dist = d
+                        best_km = s[2] if has_km else None
+                    if d < 0.05:
+                        return best_dist, best_km
+        if best_dist == float("inf"):
+            # Query point is far from any cell — fall back to brute force
+            for i, s in enumerate(samples):
+                d = haversine_km(pt, (s[0], s[1]))
+                if d < best_dist:
+                    best_dist = d
+                    best_km = s[2] if has_km else None
+        return best_dist, best_km
+
+    def dist(self, lat: float, lng: float) -> float:
+        """Return distance_km only (compat with min_dist_to_route)."""
+        return self.nearest(lat, lng)[0]
+
+    def dist_and_km(self, lat: float, lng: float) -> Tuple[float, float]:
+        """Return (distance_km, km_along) — compat with min_dist_to_route_with_km."""
+        d, km = self.nearest(lat, lng)
+        return d, km or 0.0
+
+
 # ──────────────────────────────────────────────────────────────
 # Route sampling
 # ──────────────────────────────────────────────────────────────

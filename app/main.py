@@ -83,6 +83,11 @@ async def lifespan(app: FastAPI):
 
     _register_dependencies(app)
 
+    # Pre-warm government data caches in background (rest areas, etc.)
+    # This runs in a daemon thread so it doesn't block startup.
+    from app.services.rest_areas import _ensure_preload
+    _ensure_preload()
+
     logger.info("[app] Startup complete")
     yield
 

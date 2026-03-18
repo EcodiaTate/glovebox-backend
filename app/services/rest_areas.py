@@ -272,15 +272,53 @@ def _parse_element(el: Dict[str, Any]) -> Optional[RestArea]:
 _GOV_TIMEOUT = httpx.Timeout(30.0, connect=15.0)
 
 # In-memory cache for statewide government datasets (they rarely change).
-# Each entry: (timestamp, List[RestArea]).  TTL = 1 hour.
-_GOV_CACHE_TTL = 3600.0
+# Each entry: (timestamp, List[RestArea]).  TTL = 6 hours.
+_GOV_CACHE_TTL = 6 * 3600.0
 _gov_cache: Dict[str, Tuple[float, List["RestArea"]]] = {}
 _gov_cache_lock = threading.Lock()
+_gov_preload_started = False
 
 _QLD_BASE_URL = (
     "https://spatial-gis.information.qld.gov.au/arcgis/rest/services"
     "/Transportation/StateRoadInformation/MapServer/17/query"
 )
+
+
+async def _preload_gov_data() -> None:
+    """Fetch all state-wide government rest area data into memory cache.
+
+    Called in the background on first route request so subsequent requests
+    are instant (local filter only, no external API calls).
+    """
+    global _gov_preload_started
+    _gov_preload_started = True
+    logger.info("rest_areas: starting background preload of government data")
+    try:
+        async with http_client(timeout=60.0) as client:
+            results = await asyncio.gather(
+                _fetch_qld_rest_areas(client),
+                _fetch_wa_rest_areas(client),
+                return_exceptions=True,
+            )
+        for i, label in enumerate(("QLD", "WA")):
+            if isinstance(results[i], Exception):
+                logger.warning("rest_areas: preload %s failed: %r", label, results[i])
+            else:
+                logger.info("rest_areas: preload %s → %d areas", label, len(results[i]))
+    except Exception as e:
+        logger.warning("rest_areas: preload failed: %r", e)
+
+
+def _ensure_preload() -> None:
+    """Kick off background preload if not already started."""
+    global _gov_preload_started
+    if _gov_preload_started:
+        return
+    _gov_preload_started = True
+    # Fire-and-forget in a background thread so it doesn't block the request
+    def _run():
+        asyncio.run(_preload_gov_data())
+    threading.Thread(target=_run, daemon=True).start()
 
 _WA_ENDPOINTS: Dict[str, str] = {
     "major": (
@@ -361,32 +399,21 @@ def _gov_cache_set(key: str, areas: List[RestArea]) -> None:
         _gov_cache[key] = (time.monotonic(), areas)
 
 
-async def _fetch_qld_rest_areas(
-    client: httpx.AsyncClient,
-    bbox: Optional[Tuple[float, float, float, float]] = None,
-) -> List[RestArea]:
-    """Fetch QLD government rest areas (ArcGIS MapServer with optional bbox)."""
-    cache_key = f"qld_{bbox[0]:.2f}_{bbox[1]:.2f}_{bbox[2]:.2f}_{bbox[3]:.2f}" if bbox else "qld"
-    cached = _gov_cache_get(cache_key)
+async def _fetch_qld_rest_areas(client: httpx.AsyncClient) -> List[RestArea]:
+    """Fetch ALL QLD government rest areas (state-wide, cached in memory)."""
+    cached = _gov_cache_get("qld")
     if cached is not None:
         logger.info("rest_areas: QLD cache hit (%d areas)", len(cached))
         return cached
 
     features: List[Dict[str, Any]] = []
 
-    params: Dict[str, str] = {
-        "where": "1=1", "outFields": "*", "f": "geojson",
-        "resultRecordCount": "1000",
-    }
-    if bbox:
-        params["geometry"] = f"{bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]}"
-        params["geometryType"] = "esriGeometryEnvelope"
-        params["inSR"] = "4326"
-        params["spatialRel"] = "esriSpatialRelIntersects"
-
     async def _get_page(offset: int) -> List[Dict[str, Any]]:
-        p = {**params, "resultOffset": str(offset)}
-        r = await client.get(_QLD_BASE_URL, params=p, timeout=_GOV_TIMEOUT)
+        params = {
+            "where": "1=1", "outFields": "*", "f": "geojson",
+            "resultRecordCount": "1000", "resultOffset": str(offset),
+        }
+        r = await client.get(_QLD_BASE_URL, params=params, timeout=_GOV_TIMEOUT)
         r.raise_for_status()
         return r.json().get("features") or []
 
@@ -445,23 +472,16 @@ async def _fetch_qld_rest_areas(
         ))
 
     logger.info("rest_areas: QLD fetched %d features → %d areas", len(features), len(areas))
-    _gov_cache_set(cache_key, areas)
+    _gov_cache_set("qld", areas)
     return areas
 
 
-async def _fetch_wa_rest_areas(
-    client: httpx.AsyncClient,
-    bbox: Optional[Tuple[float, float, float, float]] = None,
-) -> List[RestArea]:
-    """Fetch WA government rest areas from 4 MainRoads endpoints concurrently.
+async def _fetch_wa_rest_areas(client: httpx.AsyncClient) -> List[RestArea]:
+    """Fetch ALL WA government rest areas state-wide (cached in memory).
 
-    bbox = (min_lng, min_lat, max_lng, max_lat) — when provided, passed to
-    ArcGIS as a spatial envelope filter so only nearby features are returned.
     The host may block non-AU IPs — any request failure is silently skipped.
     """
-    # Cache key includes bbox so different routes get different cached results
-    cache_key = f"wa_{bbox[0]:.2f}_{bbox[1]:.2f}_{bbox[2]:.2f}_{bbox[3]:.2f}" if bbox else "wa"
-    cached = _gov_cache_get(cache_key)
+    cached = _gov_cache_get("wa")
     if cached is not None:
         logger.info("rest_areas: WA cache hit (%d areas)", len(cached))
         return cached
@@ -474,13 +494,7 @@ async def _fetch_wa_rest_areas(
         "road_stopping":  (0, False),
     }
 
-    # Build query params — bbox filter when available
     params: Dict[str, str] = {"where": "1=1", "outFields": "*", "f": "geojson"}
-    if bbox:
-        params["geometry"] = f"{bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]}"
-        params["geometryType"] = "esriGeometryEnvelope"
-        params["inSR"] = "4326"
-        params["spatialRel"] = "esriSpatialRelIntersects"
 
     async def _fetch_tier(tier: str, url: str) -> Tuple[str, List[Dict[str, Any]]]:
         try:
@@ -554,7 +568,7 @@ async def _fetch_wa_rest_areas(
 
     total_feats = sum(len(f) for f in tier_features.values())
     logger.info("rest_areas: WA fetched %d features → %d areas", total_feats, len(areas))
-    _gov_cache_set(cache_key, areas)
+    _gov_cache_set("wa", areas)
     return areas
 
 
@@ -799,44 +813,78 @@ class RestAreas:
 
         timeout = httpx.Timeout(float(settings.overpass_timeout_s), connect=15.0)
 
-        # Run Overpass + QLD + WA + NSW concurrently
-        bbox = (min_lng, min_lat, max_lng, max_lat)  # (min_lng, min_lat, max_lng, max_lat)
+        # Ensure government data is preloading in background
+        _ensure_preload()
+
+        bbox = (min_lng, min_lat, max_lng, max_lat)
 
         overpass_result: Dict[str, Any] = {}
-        qld_areas: List[RestArea] = []
-        wa_areas: List[RestArea] = []
-        nsw_rest_areas: List[RestArea] = []
+
+        # Government data: use pre-cached state-wide data (instant).
+        # Only fetch from API if cache is cold (first request before preload finishes).
+        qld_areas: List[RestArea] = _gov_cache_get("qld") or []
+        wa_areas: List[RestArea] = _gov_cache_get("wa") or []
+
+        # Overpass + NSW are always per-route (bbox-filtered at source)
+        tasks_to_run = []
+        task_labels = []
+
+        async def _timed(label: str, coro):
+            t0 = time.monotonic()
+            result = await coro
+            elapsed = time.monotonic() - t0
+            logger.info("rest_areas: %s completed in %.1fs", label, elapsed)
+            return result
 
         async with http_client(timeout=max(float(settings.overpass_timeout_s), 30.0)) as client:
-            results = await asyncio.gather(
-                _fetch_overpass(client=client, ql=ql),
-                _fetch_qld_rest_areas(client, bbox=bbox),
-                _fetch_wa_rest_areas(client, bbox=bbox),
-                _fetch_nsw_rest_areas(client, bbox),
-                return_exceptions=True,
-            )
+            task_labels.append("overpass")
+            tasks_to_run.append(_timed("overpass", _fetch_overpass(client=client, ql=ql)))
 
-        # Unpack results with error handling
-        if isinstance(results[0], Exception):
-            logger.warning("rest_areas: Overpass query failed: %r", results[0])
-            warnings.append(f"Overpass query failed: {results[0]}")
-        elif isinstance(results[0], dict):
-            overpass_result = results[0]
+            # Only fetch gov data from API if preload hasn't cached yet
+            if not qld_areas:
+                task_labels.append("qld")
+                tasks_to_run.append(_timed("qld", _fetch_qld_rest_areas(client)))
+            else:
+                logger.info("rest_areas: QLD from preload cache (%d areas)", len(qld_areas))
+            if not wa_areas:
+                task_labels.append("wa")
+                tasks_to_run.append(_timed("wa", _fetch_wa_rest_areas(client)))
+            else:
+                logger.info("rest_areas: WA from preload cache (%d areas)", len(wa_areas))
 
-        if isinstance(results[1], Exception):
-            logger.warning("rest_areas: QLD fetch failed: %r", results[1])
-        elif isinstance(results[1], list):
-            qld_areas = results[1]
+            task_labels.append("nsw")
+            tasks_to_run.append(_timed("nsw", _fetch_nsw_rest_areas(client, bbox)))
 
-        if isinstance(results[2], Exception):
-            logger.warning("rest_areas: WA fetch failed: %r", results[2])
-        elif isinstance(results[2], list):
-            wa_areas = results[2]
+            results = await asyncio.gather(*tasks_to_run, return_exceptions=True)
 
-        if isinstance(results[3], Exception):
-            logger.warning("rest_areas: NSW rest areas fetch failed: %r", results[3])
-        elif isinstance(results[3], list):
-            nsw_rest_areas = results[3]
+        # Unpack results
+        result_map = dict(zip(task_labels, results))
+
+        r = result_map.get("overpass")
+        if isinstance(r, Exception):
+            logger.warning("rest_areas: Overpass query failed: %r", r)
+            warnings.append(f"Overpass query failed: {r}")
+        elif isinstance(r, dict):
+            overpass_result = r
+
+        r = result_map.get("qld")
+        if isinstance(r, list):
+            qld_areas = r
+        elif isinstance(r, Exception):
+            logger.warning("rest_areas: QLD fetch failed: %r", r)
+
+        r = result_map.get("wa")
+        if isinstance(r, list):
+            wa_areas = r
+        elif isinstance(r, Exception):
+            logger.warning("rest_areas: WA fetch failed: %r", r)
+
+        nsw_rest_areas: List[RestArea] = []
+        r = result_map.get("nsw")
+        if isinstance(r, list):
+            nsw_rest_areas = r
+        elif isinstance(r, Exception):
+            logger.warning("rest_areas: NSW fetch failed: %r", r)
 
         # Build spatial grid index for fast nearest-sample lookups
         grid = RouteGrid(samples)
@@ -853,9 +901,10 @@ class RestAreas:
             area.km_along = round(km_along, 2)
             raw_areas.append(area)
 
-        # Corridor-filter government results (QLD, WA, NSW)
-        # API calls already bbox-filtered, so just check distance
+        # Bbox + corridor-filter government results (pre-cached state-wide data)
         for area in (*qld_areas, *wa_areas, *nsw_rest_areas):
+            if not (min_lat <= area.lat <= max_lat and min_lng <= area.lng <= max_lng):
+                continue
             dist_km, km_along = grid.dist_and_km(area.lat, area.lng)
             if dist_km > buffer_km:
                 continue

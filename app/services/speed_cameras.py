@@ -31,6 +31,8 @@ import asyncio
 import base64
 import hashlib
 import logging
+import threading
+import time
 from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
@@ -738,36 +740,44 @@ class SpeedCameras:
 
         # Build tasks dynamically with labels for clean result extraction
         task_labels: List[str] = []
+
+        async def _timed(label: str, coro):
+            t0 = time.monotonic()
+            result = await coro
+            elapsed = time.monotonic() - t0
+            logger.info("speed_cameras: %s completed in %.1fs", label, elapsed)
+            return result
+
         async with http_client(timeout=_HTTP_TIMEOUT) as client:
             tasks = []
 
             if include_nsw:
                 task_labels.append("nsw")
-                tasks.append(_fetch_nsw_cameras(
+                tasks.append(_timed("nsw", _fetch_nsw_cameras(
                     client, min_lat, min_lng, max_lat, max_lng,
                     rgrid, warnings,
-                ))
+                )))
             if include_qld:
                 task_labels.append("qld")
-                tasks.append(_fetch_qld_cameras(
+                tasks.append(_timed("qld", _fetch_qld_cameras(
                     client, self.conn, min_lat, min_lng, max_lat, max_lng,
                     rgrid, warnings,
-                ))
+                )))
             if include_act:
                 task_labels.append("act")
-                tasks.append(_fetch_act_cameras(
+                tasks.append(_timed("act", _fetch_act_cameras(
                     client, self.conn, min_lat, min_lng, max_lat, max_lng,
                     rgrid, warnings,
-                ))
+                )))
             if include_brisbane:
                 task_labels.append("brisbane")
-                tasks.append(_fetch_brisbane_occupancies(client, warnings))
+                tasks.append(_timed("brisbane", _fetch_brisbane_occupancies(client, warnings)))
             if include_qld:
                 task_labels.append("qld_black_spots")
-                tasks.append(_fetch_qld_black_spots(
+                tasks.append(_timed("qld_black_spots", _fetch_qld_black_spots(
                     client, self.conn, min_lat, min_lng, max_lat, max_lng,
                     rgrid, warnings,
-                ))
+                )))
 
             results = await asyncio.gather(*tasks, return_exceptions=True)
 

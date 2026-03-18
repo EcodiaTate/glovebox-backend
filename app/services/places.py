@@ -3374,13 +3374,12 @@ class Places:
                         self.store.upsert_items(fetched_items)
                     except Exception as e:
                         logger.warning("PlacesStore.upsert_items FAILED: %r", e)
-                    # Fire-and-forget: runs in a daemon thread because this method
-            # is sync (no running event loop in the threadpool worker).
-            import threading
-            threading.Thread(
-                target=lambda: asyncio.run(_wikidata_enrich_store(self.store)),
-                daemon=True,
-            ).start()
+                    # Fire-and-forget wikidata enrichment in a background thread.
+                    import threading
+                    threading.Thread(
+                        target=lambda: asyncio.run(_wikidata_enrich_store(self.store)),
+                        daemon=True,
+                    ).start()
 
                     total_supa_published += self._supa_upsert_best_effort(
                         fetched_items,

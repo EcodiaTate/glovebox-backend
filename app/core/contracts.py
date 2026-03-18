@@ -171,6 +171,8 @@ class CorridorGraphMeta(BaseModel):
     algo_version: str
     created_at: str
     bytes: int
+    # Optional inline pack — avoids a separate GET that may hit a different instance
+    pack: Optional["CorridorGraphPack"] = None
 
 
 class CorridorNode(BaseModel):
@@ -195,6 +197,10 @@ class CorridorGraphPack(BaseModel):
     bbox: BBox4
     nodes: List[CorridorNode] = Field(default_factory=list)
     edges: List[CorridorEdge] = Field(default_factory=list)
+
+
+# Resolve forward reference for CorridorGraphMeta.pack
+CorridorGraphMeta.model_rebuild()
 
 
 # ──────────────────────────────────────────────────────────────

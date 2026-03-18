@@ -164,7 +164,10 @@ def corridor_ensure(
         max_edges=max_edges,
         stop_coords=stop_tuples,
     )
-    return result.meta
+    # Include pack inline to avoid multi-instance 404 on the separate GET
+    meta = result.meta
+    meta.pack = result.pack
+    return meta
 
 
 @router.get("/corridor/{corridor_key}", response_model=CorridorGraphPack)

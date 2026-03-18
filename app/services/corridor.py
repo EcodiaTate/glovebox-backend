@@ -203,10 +203,17 @@ class Corridor:
 
         # ── Tree routing strategy ─────────────────────────────────────
         # 1. Get OSM node IDs from the main route spine
-        # 2. For each UNIQUE stop destination, OSRM route from nearest
-        #    spine point → stop (deduplicated, parallelized)
-        # 3. Collect all node IDs, query edges by node ID
+        # 2. Parallel /nearest snap for all unique stops — skip those
+        #    already on the spine
+        # 3. Parallel /route for remaining stops (spine→stop)
+        # 4. Query edges DB by collected node IDs
+        #
+        # Optimized for GCR→GCR same-region (~5ms per OSRM call):
+        #   - 30 concurrent workers (OSRM has 4 vCPU, concurrency=320)
+        #   - /nearest and /route both parallelized
+        #   - Single httpx connection pool shared across all phases
         import concurrent.futures
+        import time as _time
 
         spine_points = _sample_poly6(route_polyline6)
         all_node_ids: set[int] = set()
@@ -226,10 +233,6 @@ class Corridor:
                     dist = _haversine_m(slat, slng, sp_lat, sp_lng)
                     if dist < 500:  # skip stops very close to spine
                         continue
-                    # Grid key: round the STOP coords to ~1km grid.
-                    # This deduplicates stops that are close to each other,
-                    # while preserving stops in different directions from
-                    # the same spine point (which need separate routes).
                     grid_key = (round(slat, 2), round(slng, 2))
                     if grid_key not in stop_routes or dist > stop_routes[grid_key][2]:
                         stop_routes[grid_key] = (sp_lat, sp_lng, slat, slng, dist)
@@ -242,41 +245,49 @@ class Corridor:
             logger.info("corridor tree: spine + %d stops → %d unique routes (deduplicated)",
                         len(stop_coords) if stop_coords else 0, len(unique_routes))
 
-            # In production (GCR→GCR same-region), latency is ~5ms so
-            # 10 workers avoids CPU contention on the 4-vCPU OSRM instance.
-            # In local dev this is slow (~2s/call network latency) — that's expected.
-            max_workers = 10
+            # 30 workers: OSRM Cloud Run has concurrency=320 on 4 vCPU.
+            # Same-region latency is ~5ms, so 30 concurrent requests ≈ 150ms
+            # of CPU time per batch — well within capacity.
+            max_workers = 30
 
             with httpx.Client(
-                limits=httpx.Limits(max_connections=max_workers, max_keepalive_connections=max_workers),
-                timeout=httpx.Timeout(30.0, connect=10.0),
+                limits=httpx.Limits(max_connections=max_workers + 5, max_keepalive_connections=max_workers),
+                timeout=httpx.Timeout(30.0, connect=5.0),
             ) as client:
-                # Route the spine
+                # Phase 1: Route the spine (single call)
+                t_spine = _time.monotonic()
                 spine_nodes = self._osrm_route_nodes(
                     start_lat, start_lng, end_lat, end_lng, client, alternatives=0,
                 )
                 all_node_ids.update(spine_nodes)
-                logger.info("corridor tree: spine → %d nodes", len(spine_nodes))
+                logger.info("corridor tree: spine → %d nodes (%.1fs)",
+                           len(spine_nodes), _time.monotonic() - t_spine)
 
-                # Use OSRM /nearest to snap each unique stop to its closest
-                # OSM node. If the snapped node is already in the spine set,
-                # skip routing — the stop is already reachable.
+                # Phase 2: Parallel /nearest snap for ALL unique stops
+                t_snap = _time.monotonic()
+
+                def _snap_stop(entry):
+                    _gk, _sp_lat, _sp_lng, slat, slng = entry
+                    node_id = self._osrm_nearest_node(slat, slng, client)
+                    return entry, node_id
+
                 stops_needing_route: list[tuple] = []
                 snapped = 0
-                for route_entry in unique_routes:
-                    _gk, _sp_lat, _sp_lng, slat, slng = route_entry
-                    nearest_node = self._osrm_nearest_node(slat, slng, client)
-                    if nearest_node and nearest_node in all_node_ids:
-                        snapped += 1
-                        continue
-                    if nearest_node:
-                        all_node_ids.add(nearest_node)
-                    stops_needing_route.append(route_entry)
+                with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
+                    for entry, nearest_node in pool.map(_snap_stop, unique_routes):
+                        if nearest_node and nearest_node in all_node_ids:
+                            snapped += 1
+                            continue
+                        if nearest_node:
+                            all_node_ids.add(nearest_node)
+                        stops_needing_route.append(entry)
 
-                logger.info("corridor tree: %d stops snapped to spine, %d need routing",
-                           snapped, len(stops_needing_route))
+                logger.info("corridor tree: %d snapped to spine, %d need routing (%.1fs)",
+                           snapped, len(stops_needing_route), _time.monotonic() - t_snap)
 
-                # Parallel OSRM calls for remaining stop routes
+                # Phase 3: Parallel /route for remaining stops
+                t_route = _time.monotonic()
+
                 def _route_stop(args):
                     _gk, sp_lat, sp_lng, slat, slng = args
                     return self._osrm_route_nodes(sp_lat, sp_lng, slat, slng, client, alternatives=0)
@@ -296,13 +307,15 @@ class Corridor:
                         except Exception:
                             failed += 1
 
-                logger.info("corridor tree: routed=%d, failed=%d, total nodes=%d",
-                           routed, failed, len(all_node_ids))
+                logger.info("corridor tree: routed=%d, failed=%d, total nodes=%d (%.1fs)",
+                           routed, failed, len(all_node_ids), _time.monotonic() - t_route)
 
         # Step 3: Query edges by node IDs
+        import time as _time
+        t_edges = _time.monotonic()
         logger.info("corridor tree: querying edges for %d unique nodes", len(all_node_ids))
         edge_rows = self.edges_db.query_by_node_ids(list(all_node_ids))
-        logger.info("corridor tree: got %d edges", len(edge_rows))
+        logger.info("corridor tree: got %d edges (%.1fs)", len(edge_rows), _time.monotonic() - t_edges)
 
         # Build nodes + edges from query results
         node_coords: Dict[int, Tuple[float, float]] = {}

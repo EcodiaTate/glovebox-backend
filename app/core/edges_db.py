@@ -377,7 +377,9 @@ class EdgesDBPostgres(EdgesDB):
     def query_by_node_ids(self, node_ids: List[int]) -> List[EdgeRow]:
         if not node_ids:
             return []
-        # Postgres handles large IN lists well, but batch at 10k to be safe
+        # Use UNION of two index scans instead of OR — each branch uses
+        # a single B-tree index (idx_edges_from_id / idx_edges_to_id)
+        # which is much faster than a BitmapOr on large IN lists.
         results: List[EdgeRow] = []
         batch_size = 10_000
         conn = self._pool.getconn()
@@ -387,10 +389,11 @@ class EdgesDBPostgres(EdgesDB):
                 chunk = node_ids[i:i + batch_size]
                 placeholders = ",".join("%s" for _ in chunk)
                 sql = f"""
-                    SELECT {self._SELECT_COLS}
-                    FROM edges
+                    SELECT {self._SELECT_COLS} FROM edges
                     WHERE from_id IN ({placeholders})
-                       OR to_id IN ({placeholders})
+                    UNION
+                    SELECT {self._SELECT_COLS} FROM edges
+                    WHERE to_id IN ({placeholders})
                 """
                 params = list(chunk) + list(chunk)
                 cur.execute(sql, params)

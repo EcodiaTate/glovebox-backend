@@ -761,6 +761,77 @@ def _analyse_fatigue(
 
 _REST_CATEGORIES = ("rest_area", "camp", "toilet")
 
+def _read_supabase_rest_areas(
+    min_lat: float, min_lng: float, max_lat: float, max_lng: float,
+) -> List[Dict[str, Any]]:
+    """Read rest-area-relevant items from Supabase (persistent across instances).
+
+    Returns items in the same format as _read_places_store.
+    """
+    try:
+        from app.core.settings import settings
+        supa_url = getattr(settings, "supabase_url", None)
+        supa_key = getattr(settings, "supabase_anon_key", None)
+        if not supa_url or not supa_key:
+            return []
+
+        import httpx as _httpx
+        cats = ",".join(_REST_CATEGORIES)
+        params = {
+            "select": "osm_type,osm_id,lat,lng,name,category,tags",
+            "lat": f"gte.{min_lat}",
+            "lng": f"gte.{min_lng}",
+            "category": f"in.({cats})",
+            "limit": "2000",
+        }
+        # PostgREST needs separate params for range filters
+        url = f"{supa_url}/rest/v1/roam_places_items"
+        headers = {
+            "apikey": supa_key,
+            "Authorization": f"Bearer {supa_key}",
+        }
+        with _httpx.Client(timeout=5.0) as client:
+            resp = client.get(
+                url, headers=headers,
+                params={
+                    "select": "osm_type,osm_id,lat,lng,name,category,tags",
+                    "lat": f"gte.{min_lat}",
+                    "limit": "2000",
+                    "category": f"in.({cats})",
+                },
+            )
+            # Add remaining filters via extra params
+            # PostgREST handles multiple same-key params
+            resp = client.get(
+                url, headers=headers,
+                params=[
+                    ("select", "osm_type,osm_id,lat,lng,name,category,tags"),
+                    ("lat", f"gte.{min_lat}"),
+                    ("lat", f"lte.{max_lat}"),
+                    ("lng", f"gte.{min_lng}"),
+                    ("lng", f"lte.{max_lng}"),
+                    ("category", f"in.({cats})"),
+                    ("limit", "2000"),
+                ],
+            )
+            if resp.status_code != 200:
+                logger.debug("rest_areas: Supabase returned %d", resp.status_code)
+                return []
+            rows = resp.json()
+            return [
+                {
+                    "osm_type": r.get("osm_type"), "osm_id": r.get("osm_id"),
+                    "lat": r.get("lat"), "lng": r.get("lng"),
+                    "name": r.get("name"), "category": r.get("category"),
+                    "tags": r.get("tags") or {},
+                }
+                for r in rows
+            ]
+    except Exception as e:
+        logger.debug("rest_areas: Supabase read failed: %r", e)
+        return []
+
+
 def _read_places_store(
     min_lat: float, min_lng: float, max_lat: float, max_lng: float,
     conn,
@@ -942,26 +1013,44 @@ class RestAreas:
                 len(places_items), len(raw_areas), time.monotonic() - t0,
             )
         else:
-            # Fallback: direct Overpass query
-            ql = _build_overpass_query(min_lat, min_lng, max_lat, max_lng)
-            try:
-                overpass_result = await _fetch_overpass(client=None, ql=ql)
-            except Exception as e:
-                logger.warning("rest_areas: Overpass query failed: %r", e)
-                warnings.append(f"Overpass query failed: {e}")
-                overpass_result = {}
-            logger.info("rest_areas: Overpass fallback completed in %.1fs", time.monotonic() - t0)
+            # Fallback 1: try Supabase (fast, persistent across instances)
+            supa_items = _read_supabase_rest_areas(min_lat, min_lng, max_lat, max_lng)
+            if supa_items:
+                for item in supa_items:
+                    area = _place_item_to_rest_area(item)
+                    if area is None:
+                        continue
+                    dist_km, km_along = grid.dist_and_km(area.lat, area.lng)
+                    if dist_km > buffer_km:
+                        continue
+                    area.distance_from_route_km = round(dist_km, 2)
+                    area.km_along = round(km_along, 2)
+                    raw_areas.append(area)
+                logger.info(
+                    "rest_areas: read %d items from Supabase → %d in corridor (%.1fs)",
+                    len(supa_items), len(raw_areas), time.monotonic() - t0,
+                )
+            else:
+                # Fallback 2: direct Overpass query (last resort)
+                ql = _build_overpass_query(min_lat, min_lng, max_lat, max_lng)
+                try:
+                    overpass_result = await _fetch_overpass(client=None, ql=ql)
+                except Exception as e:
+                    logger.warning("rest_areas: Overpass query failed: %r", e)
+                    warnings.append(f"Overpass query failed: {e}")
+                    overpass_result = {}
+                logger.info("rest_areas: Overpass fallback completed in %.1fs", time.monotonic() - t0)
 
-            for el in overpass_result.get("elements") or []:
-                area = _parse_element(el)
-                if area is None:
-                    continue
-                dist_km, km_along = grid.dist_and_km(area.lat, area.lng)
-                if dist_km > buffer_km:
-                    continue
-                area.distance_from_route_km = round(dist_km, 2)
-                area.km_along = round(km_along, 2)
-                raw_areas.append(area)
+                for el in overpass_result.get("elements") or []:
+                    area = _parse_element(el)
+                    if area is None:
+                        continue
+                    dist_km, km_along = grid.dist_and_km(area.lat, area.lng)
+                    if dist_km > buffer_km:
+                        continue
+                    area.distance_from_route_km = round(dist_km, 2)
+                    area.km_along = round(km_along, 2)
+                    raw_areas.append(area)
 
         # Deduplicate
         areas = _dedup(raw_areas)

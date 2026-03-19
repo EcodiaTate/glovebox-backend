@@ -425,7 +425,7 @@ class Settings(BaseSettings):
     revenuecat_webhook_secret: str = Field(default="", alias="REVENUECAT_WEBHOOK_SECRET")
 
     # ──────────────────────────────────────────────────────────────
-    # Weather overlay — Open-Meteo BOM ACCESS-G (self-hosted or public)
+    # Weather overlay - Open-Meteo BOM ACCESS-G (self-hosted or public)
     # Self-hosted: set OPEN_METEO_BASE_URL to your instance (e.g. http://localhost:8080).
     # Self-hosted Open-Meteo (AGPLv3 engine) syncing ECMWF IFS 0.25° model.
     # Covers Australia at ~25km resolution. CC-BY 4.0 data attribution.
@@ -454,7 +454,7 @@ class Settings(BaseSettings):
 
     # NSW FuelCheck - https://api.onegov.nsw.gov.au/ (Swagger: /api/swagger/spec/22)
     # Migrated from api.nsw.gov.au (dead, 404) to api.onegov.nsw.gov.au in 2025/2026.
-    # Auth: OAuth2 client_credentials — POST /oauth/client_credential/accesstoken
+    # Auth: OAuth2 client_credentials - POST /oauth/client_credential/accesstoken
     #   with Basic(api_key:api_secret) → Bearer token.
     # V2 endpoints cover NSW + TAS.
     nsw_fuel_enabled: bool = Field(default=True, alias="NSW_FUEL_ENABLED")
@@ -481,17 +481,17 @@ class Settings(BaseSettings):
     # Kept as dead code for reference. Use NSW FuelCheck + WA FuelWatch instead.
     petrolspy_enabled: bool = Field(default=False, alias="PETROLSPY_ENABLED")
 
-    # QLD Fuel Price Reporting — https://www.fuelpricesqld.com.au
+    # QLD Fuel Price Reporting - https://www.fuelpricesqld.com.au
     # Register at fuelpricesqld.com.au to obtain API token. Operated by Informed Sources.
     qld_fuel_enabled: bool = Field(default=False, alias="QLD_FUEL_ENABLED")
     qld_fuel_api_token: str = Field(default="", alias="QLD_FUEL_API_TOKEN")
 
-    # VIC Servo Saver Public API — https://service.vic.gov.au
+    # VIC Servo Saver Public API - https://service.vic.gov.au
     # Apply for API Consumer ID at service.vic.gov.au. 24-hour data delay.
     vic_fuel_enabled: bool = Field(default=False, alias="VIC_FUEL_ENABLED")
     vic_fuel_consumer_id: str = Field(default="", alias="VIC_FUEL_CONSUMER_ID")
 
-    # SA Fuel Pricing — via CBS / Informed Sources aggregator
+    # SA Fuel Pricing - via CBS / Informed Sources aggregator
     # Register as data publisher with Consumer and Business Services (CBS).
     sa_fuel_enabled: bool = Field(default=False, alias="SA_FUEL_ENABLED")
     sa_fuel_api_token: str = Field(default="", alias="SA_FUEL_API_TOKEN")
@@ -513,7 +513,7 @@ class Settings(BaseSettings):
 
     # ──────────────────────────────────────────────────────────────
     # Rest Areas + Fatigue Management overlay (Overpass, static data)
-    # 24h cache TTL — rest areas rarely change
+    # 24h cache TTL - rest areas rarely change
     # ──────────────────────────────────────────────────────────────
     rest_algo_version: str = Field(default="rest_areas.v3.overpass+qld+wa+nsw", alias="REST_ALGO_VERSION")
     rest_cache_seconds: int = Field(default=86400, alias="REST_CACHE_SECONDS")
@@ -530,7 +530,7 @@ class Settings(BaseSettings):
     )
 
     # ──────────────────────────────────────────────────────────────
-    # Mobile Coverage overlay — OpenCelliD bulk CSV (MCC 505 = Australia)
+    # Mobile Coverage overlay - OpenCelliD bulk CSV (MCC 505 = Australia)
     # Bulk download updated daily; cache for 24h (towers rarely move).
     # No API key required for the free bulk download tier.
     # ──────────────────────────────────────────────────────────────
@@ -548,7 +548,7 @@ class Settings(BaseSettings):
     # Guide Web Search
     # Gives the guide live web search so it can answer about current
     # events, road conditions, new businesses, etc.
-    # Tavily (tavily.com) is designed for LLM consumption — returns
+    # Tavily (tavily.com) is designed for LLM consumption - returns
     # clean extracted text, not HTML. Free tier: 1000 searches/month.
     # Google CSE is the fallback. Set provider to "none" to disable.
     # ──────────────────────────────────────────────────────────────
@@ -560,7 +560,7 @@ class Settings(BaseSettings):
     guide_search_timeout_s: float = Field(default=10.0, alias="GUIDE_SEARCH_TIMEOUT_S")
 
     # ──────────────────────────────────────────────────────────────
-    # Wildlife Hazard Overlay — iNaturalist Node API v1
+    # Wildlife Hazard Overlay - iNaturalist Node API v1
     # Commercial-use CC licenses (cc0, cc-by) enforced at query time.
     # Rate limit: 60 req/min (iNaturalist public API cap).
     # ──────────────────────────────────────────────────────────────
@@ -578,15 +578,15 @@ class Settings(BaseSettings):
     wildlife_medium_risk_count: int = Field(default=3, alias="WILDLIFE_MEDIUM_RISK_COUNT")
 
     # ──────────────────────────────────────────────────────────────
-    # Bushfire Overlay — NSW RFS + NASA FIRMS
+    # Bushfire Overlay - NSW RFS + NASA FIRMS
     # NSW RFS: free, no auth. FIRMS: free, requires API key from
     # https://firms.modaps.eosdis.nasa.gov/api/area/
-    # Cache TTL 15 min — fires are time-critical.
+    # Cache TTL 15 min - fires are time-critical.
     # ──────────────────────────────────────────────────────────────
     firms_map_key: str = Field(default="", alias="FIRMS_MAP_KEY")
 
     # ──────────────────────────────────────────────────────────────
-    # Emergency Services overlay — GA Emergency Management Facilities
+    # Emergency Services overlay - GA Emergency Management Facilities
     # ArcGIS MapServer (CC-BY 4.0, no auth required).
     # Layers: 0=Ambulance, 1=Other, 2=Police, 3=Metro Fire,
     #         4=Rural Fire, 5=SES
@@ -603,7 +603,7 @@ class Settings(BaseSettings):
     )
 
     # ──────────────────────────────────────────────────────────────
-    # Heritage & Protected Areas overlay — DCCEEW GIS services
+    # Heritage & Protected Areas overlay - DCCEEW GIS services
     # ArcGIS MapServer (CC-BY 3.0 AU, no auth required).
     # World Heritage, National Heritage, Commonwealth Heritage, CAPAD.
     # ──────────────────────────────────────────────────────────────
@@ -619,7 +619,7 @@ class Settings(BaseSettings):
     )
 
     # ──────────────────────────────────────────────────────────────
-    # Air Quality overlay — OpenWeatherMap Air Pollution API
+    # Air Quality overlay - OpenWeatherMap Air Pollution API
     # Free tier: 1,000,000 calls/month. Requires free API key.
     # ──────────────────────────────────────────────────────────────
     aqi_algo_version: str = Field(
@@ -632,7 +632,7 @@ class Settings(BaseSettings):
     aqi_sample_interval_km: float = Field(default=50.0, alias="AQI_SAMPLE_INTERVAL_KM")
 
     # ──────────────────────────────────────────────────────────────
-    # Bushfire overlay — NSW RFS + NASA FIRMS
+    # Bushfire overlay - NSW RFS + NASA FIRMS
     # NSW RFS: free, no auth. FIRMS: free, requires MAP_KEY.
     # ──────────────────────────────────────────────────────────────
     bushfire_algo_version: str = Field(
@@ -651,7 +651,7 @@ class Settings(BaseSettings):
     )
 
     # ──────────────────────────────────────────────────────────────
-    # Speed Cameras overlay — NSW TfNSW ArcGIS (CC-BY 3.0 AU)
+    # Speed Cameras overlay - NSW TfNSW ArcGIS (CC-BY 3.0 AU)
     # + Brisbane Council road occupancies (CC-BY 4.0)
     # Both free, no auth required.
     # ──────────────────────────────────────────────────────────────
@@ -663,7 +663,7 @@ class Settings(BaseSettings):
     cameras_enabled: bool = Field(default=True, alias="CAMERAS_ENABLED")
 
     # ──────────────────────────────────────────────────────────────
-    # Elevation overlay — OpenTopography SRTM30M (primary)
+    # Elevation overlay - OpenTopography SRTM30M (primary)
     #                   + Open-Elevation (fallback, no key required)
     # Free API key: https://portal.opentopography.org/requestService?service=api
     # Leave blank to use Open-Elevation fallback only.

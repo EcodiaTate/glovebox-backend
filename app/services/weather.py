@@ -75,7 +75,7 @@ _WMO_DESCRIPTIONS = {
 # Open-Meteo config
 # ══════════════════════════════════════════════════════════════
 
-# Hourly vars we request — maps to WeatherPoint fields.
+# Hourly vars we request - maps to WeatherPoint fields.
 _HOURLY_VARS = ",".join([
     "temperature_2m",
     "apparent_temperature",

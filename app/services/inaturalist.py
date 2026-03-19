@@ -7,7 +7,7 @@ Creative Commons licenses (CC0 and CC-BY).
 
 Rate limits (strict):
   - 60 requests per minute
-  - 10,000 requests per day (not tracked here — operator responsibility)
+  - 10,000 requests per day (not tracked here - operator responsibility)
 
 Image URL rules:
   ALLOW   inaturalist-open-data.s3.amazonaws.com  (CC0 / CC-BY open S3)
@@ -114,7 +114,7 @@ def swap_image_size(url: str, size: str) -> str:
         needle = f"/{suffix}."
         if needle in url:
             return url.replace(needle, f"/{size}.", 1)
-    return url  # no recognisable suffix — return unchanged
+    return url  # no recognisable suffix - return unchanged
 
 
 # ──────────────────────────────────────────────────────────────
@@ -142,7 +142,7 @@ def _sanitise_observation(obs: Dict[str, Any], photo_size: str = "medium") -> Op
 
     Returns None if the observation lacks a valid location or any open photos.
     """
-    # Location — API returns "lat,lng" as a string or separate fields
+    # Location - API returns "lat,lng" as a string or separate fields
     location_str: Optional[str] = obs.get("location")
     if not location_str:
         return None
@@ -154,7 +154,7 @@ def _sanitise_observation(obs: Dict[str, Any], photo_size: str = "medium") -> Op
     except (ValueError, AttributeError):
         return None
 
-    # Photos — filter to open-licensed S3 URLs only
+    # Photos - filter to open-licensed S3 URLs only
     raw_photos: List[Dict[str, Any]] = obs.get("photos") or []
     open_photos: List[str] = []
     for photo in raw_photos:

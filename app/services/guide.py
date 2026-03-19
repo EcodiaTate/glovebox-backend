@@ -82,7 +82,7 @@ def _format_route_score(route_score: Dict[str, Any] | None) -> str:
         score = c.get("score", 0)
         factors = c.get("factors", [])
         factor_str = "; ".join(factors[:3]) if factors else "No concerns"
-        lines.append(f"{cat.capitalize()}: {score}/10 — {factor_str}")
+        lines.append(f"{cat.capitalize()}: {score}/10 - {factor_str}")
     if summary:
         lines.append(f"Summary: {summary}")
     return "\n".join(lines)
@@ -93,7 +93,7 @@ def _format_flood_summary(flood: Dict[str, Any] | None) -> str:
         return ""
     active = flood.get("active_gauges", 0)
     worst = flood.get("worst_severity", "minor")
-    lines = [f"## Flood\n{active} active gauge(s) — worst: {worst}"]
+    lines = [f"## Flood\n{active} active gauge(s) - worst: {worst}"]
     for g in flood.get("sample", [])[:3]:
         trend = g.get("trend", "")
         height = g.get("height_m")
@@ -124,7 +124,7 @@ def _format_wildlife_summary(wildlife: Dict[str, Any] | None) -> str:
     if km_markers:
         lines.append(f"Hotspots: {', '.join(km_markers[:5])}")
     if twilight:
-        lines.append("⚠ Twilight risk — kangaroos active at dawn/dusk along parts of route")
+        lines.append("⚠ Twilight risk - kangaroos active at dawn/dusk along parts of route")
     return "\n".join(lines)
 
 
@@ -138,7 +138,7 @@ def _format_weather_summary(weather: Dict[str, Any] | None) -> str:
     rain = weather.get("rain_sections", 0)
     if rain:
         markers = weather.get("rain_km_markers", [])
-        lines.append(f"Rain: {rain} section(s) — {', '.join(markers[:4])}")
+        lines.append(f"Rain: {rain} section(s) - {', '.join(markers[:4])}")
     if weather.get("windy_sections", 0):
         lines.append(f"High wind: {weather['windy_sections']} section(s)")
     if weather.get("twilight_danger_sections", 0):
@@ -150,7 +150,7 @@ def _format_weather_summary(weather: Dict[str, Any] | None) -> str:
     if weather.get("extreme_heat"):
         lines.append("⚠ Extreme heat (38°C+) on route")
     if weather.get("near_freezing"):
-        lines.append("⚠ Near-freezing temps (≤2°C) — watch for ice")
+        lines.append("⚠ Near-freezing temps (≤2°C) - watch for ice")
     return "\n".join(lines)
 
 
@@ -172,7 +172,7 @@ def _format_conditions(ctx: GuideContext) -> str:
 
 def _format_places(places: List[WirePlace]) -> str:
     if not places:
-        return "  (none pre-loaded — use tools to search)"
+        return "  (none pre-loaded - use tools to search)"
 
     by_cat: Dict[str, List[WirePlace]] = {}
     for p in places:
@@ -248,7 +248,11 @@ def _format_stops(stops: List[Dict[str, Any]], visited: set, current_idx: int) -
     for i, s in enumerate(stops):
         sid = s.get("id", f"p{i}")
         marker = "✅" if sid in visited else ("📍" if i == current_idx else "⬜")
-        line = f"  {marker} [{i}] {s.get('name','?')} ({s.get('type','poi')}) — {s.get('lat',0):.4f},{s.get('lng',0):.4f}"
+        line = f"  {marker} [{i}] {s.get('name','?')} ({s.get('type','poi')}) - {s.get('lat',0):.4f},{s.get('lng',0):.4f}"
+        if s.get("arrive_at"):
+            line += f" | arrive: {s['arrive_at']}"
+        if s.get("depart_at"):
+            line += f" | depart: {s['depart_at']}"
         if s.get("notes"):
             line += f" | {s['notes']}"
         lines.append(line)
@@ -258,7 +262,7 @@ def _format_stops(stops: List[Dict[str, Any]], visited: set, current_idx: int) -
 # ══════════════════════════════════════════════════════════════
 # LOCATION HINT
 # Light nudge when user mentions a place not near their GPS.
-# towns.json is used only for coordinates — no knowledge injected.
+# towns.json is used only for coordinates - no knowledge injected.
 # ══════════════════════════════════════════════════════════════
 
 _towns_cache: Dict[str, Tuple[float, float]] | None = None
@@ -291,7 +295,7 @@ def _location_hint(thread: List[GuideMsg], user_lat: float | None, user_lng: flo
                 if dist_km < 30:
                     return ""
             return (
-                f"User mentioned {town.title()} — their GPS is elsewhere. "
+                f"User mentioned {town.title()} - their GPS is elsewhere. "
                 f"If they're asking about {town.title()} specifically, search there or use your knowledge. "
                 f"Don't second-guess their choice of destination."
             )
@@ -329,30 +333,58 @@ def _build_system_prompt(
         if progress.local_time_iso:
             try:
                 dt = datetime.fromisoformat(progress.local_time_iso.replace("Z", "+00:00"))
-                time_str = f"\nTime: {dt.strftime('%H:%M')} local"
+                time_str = f"\nLocal time: {dt.strftime('%A %d %b %Y, %H:%M')} ({progress.timezone or 'local'})"
             except Exception:
                 pass
     else:
         pos = "Location unavailable."
         time_str = ""
 
+    # Driver state block
+    driver_block = ""
+    ds = ctx.driver_state
+    if ds and isinstance(ds, dict):
+        ds_parts: List[str] = []
+        if ds.get("eta_iso"):
+            ds_parts.append(f"ETA at destination: {ds['eta_iso']}")
+        if ds.get("night_arrival"):
+            ds_parts.append("⚠ Night arrival - will arrive after sunset")
+        if ds.get("fatigue_level") and ds["fatigue_level"] != "none":
+            ds_parts.append(f"Fatigue: {ds['fatigue_level']}")
+            if ds.get("hours_since_rest") is not None:
+                ds_parts.append(f"Driving: {ds['hours_since_rest']:.1f}h since last rest")
+        if ds.get("fuel_pressure") is not None:
+            fp = ds["fuel_pressure"]
+            label = "low" if fp > 0.7 else ("mid" if fp > 0.4 else "good")
+            ds_parts.append(f"Fuel: {label} ({fp:.0%} consumed)")
+            if ds.get("km_to_next_fuel") is not None:
+                ds_parts.append(f"Next fuel: {ds['km_to_next_fuel']:.0f}km")
+        if ds.get("is_night"):
+            ds_parts.append("Currently driving at night")
+        if ds.get("temperature_c") is not None:
+            ds_parts.append(f"Outside temp: {ds['temperature_c']:.0f}°C")
+        if ds.get("speed_ratio") is not None and ds["speed_ratio"] < 0.8:
+            ds_parts.append(f"Running slower than planned ({ds['speed_ratio']:.0%} of expected speed)")
+        if ds_parts:
+            driver_block = "\n## Driver State\n" + "\n".join(ds_parts)
+
     # Tool availability
     tool_notes: List[str] = []
     if ctx.corridor_key:
-        tool_notes.append(f"✅ corridor_key: {ctx.corridor_key} — places_corridor available")
+        tool_notes.append(f"✅ corridor_key: {ctx.corridor_key} - places_corridor available")
     else:
-        tool_notes.append("⚠️ No corridor_key — use places_search instead of places_corridor")
+        tool_notes.append("⚠️ No corridor_key - use places_search instead of places_corridor")
     if ctx.geometry:
-        tool_notes.append(f"✅ geometry available — places_suggest works")
+        tool_notes.append(f"✅ geometry available - places_suggest works")
     else:
-        tool_notes.append("⚠️ No geometry — places_suggest unavailable")
+        tool_notes.append("⚠️ No geometry - places_suggest unavailable")
 
     search_available = bool(settings.tavily_api_key or settings.google_cse_api_key)
     web_search_block = ""
     if search_available:
         web_search_block = (
-            "\n  web_search — search the web for anything. Road conditions, closures, business hours, events, reviews, local tips."
-            "\n    Use it aggressively — multiple searches per turn is fine. Better to search and know than to guess."
+            "\n  web_search - search the web for anything. Road conditions, closures, business hours, events, reviews, local tips."
+            "\n    Use it aggressively - multiple searches per turn is fine. Better to search and know than to guess."
         )
 
     location_hint = _location_hint(thread or [], progress.user_lat if progress else None, progress.user_lng if progress else None)
@@ -362,27 +394,29 @@ def _build_system_prompt(
     wildlife_block = _format_wildlife_summary(ctx.wildlife_summary)
     weather_block = _format_weather_summary(ctx.weather_summary)
 
-    prompt = f"""You are Roam Guide — the knowledgeable mate riding shotgun on an Aussie road trip. You know every highway, bakery, gorge pool, and pub from Broome to Byron.
+    prompt = f"""You are Roam Guide - the knowledgeable mate riding shotgun on an Aussie road trip. You know every highway, bakery, gorge pool, and pub from Broome to Byron.
 
-Trust your knowledge of Australia. Share stories, tips, warnings, and opinions freely — you're a travel companion, not a search engine. Use your tools to get specifics and current info.
+Trust your knowledge of Australia. Share stories, tips, warnings, and opinions freely - you're a travel companion, not a search engine. Use your tools to get specifics and current info.
 
-Be proactive: flag fuel gaps, fatigue risks, amazing nearby spots, weather, wildlife danger zones, flood warnings, and mobile coverage dead zones without being asked. Be vivid and specific. You have live overlay data — use it.
+Be proactive: flag fuel gaps, fatigue risks, amazing nearby spots, weather, wildlife danger zones, flood warnings, and mobile coverage dead zones without being asked. Be vivid and specific. You have live overlay data - use it.
 
-Style: warm but not repetitive. Don't start every message with "G'day" — vary your openings naturally. Don't repeat info from earlier in the conversation. Get straight to the new stuff.
+You have the full trip schedule with planned arrive/depart times for each stop. Use this to help plan the day - suggest when to leave, warn if they're running behind schedule, recommend lunch/coffee stops that fit the timeline, flag if they'll arrive at a campsite after dark, and help them make the most of their time at each stop. If a user asks "when should we leave?" or "will we make it by 3pm?", you can do the maths using their schedule, current position, and ETA.
 
-When you have a Route Intelligence Score, reference its specific warnings naturally in your advice — don't just list them, weave them into your response (e.g. "I see there's no fuel for 287km past Coober Pedy — you'll want a full tank before you leave town.").
+Style: warm but not repetitive. Don't start every message with "G'day" - vary your openings naturally. Don't repeat info from earlier in the conversation. Get straight to the new stuff.
+
+When you have a Route Intelligence Score, reference its specific warnings naturally in your advice - don't just list them, weave them into your response (e.g. "I see there's no fuel for 287km past Coober Pedy - you'll want a full tank before you leave town.").
 
 ═══ TRIP ═══
-{ctx.label or 'Unnamed'} | {ctx.profile or 'drive'}{' | '+str(int(total_km))+'km' if total_km else ''}
+{ctx.label or 'Unnamed'} | {ctx.profile or 'drive'}{' | '+str(int(total_km))+'km' if total_km else ''}{' | ~'+str(int((ctx.total_duration_s or 0)/3600))+'h drive' if ctx.total_duration_s else ''}
 Phase: {phase}
-Stops:
+Stops (arrive/depart times are the traveller's planned schedule):
 {_format_stops(ctx.stops, visited, current_idx)}
 
 ═══ LIVE ═══
 {pos}{time_str}
 {_format_conditions(ctx)}
 {f"Progress: {progress.km_from_start:.0f}km along route. Focus on places ahead." if progress and progress.km_from_start > 0 else ""}
-{(chr(10) + route_score_block) if route_score_block else ""}{(chr(10) + weather_block) if weather_block else ""}{(chr(10) + flood_block) if flood_block else ""}{(chr(10) + wildlife_block) if wildlife_block else ""}{(chr(10) + coverage_block) if coverage_block else ""}
+{(chr(10) + route_score_block) if route_score_block else ""}{(chr(10) + weather_block) if weather_block else ""}{(chr(10) + flood_block) if flood_block else ""}{(chr(10) + wildlife_block) if wildlife_block else ""}{(chr(10) + coverage_block) if coverage_block else ""}{driver_block}
 ═══ NEARBY ═══
 {_format_places(relevant_places)}
 
@@ -393,20 +427,20 @@ To find places and produce action buttons, use these (they return structured pla
   places_corridor {{"tool":"places_corridor","req":{{"corridor_key":"auto","categories":["viewpoint","waterfall","swimming_hole"],"limit":30}}}}
   places_suggest  {{"tool":"places_suggest","req":{{"geometry":"auto","interval_km":50,"categories":["attraction"]}}}}
 
-For current info (road conditions, events, hours, reviews):{web_search_block if web_search_block else chr(10)+"  web_search (unavailable — no API key configured)"}
+For current info (road conditions, events, hours, reviews):{web_search_block if web_search_block else chr(10)+"  web_search (unavailable - no API key configured)"}
 
 IMPORTANT: To recommend places with action buttons, you MUST use places_search/places_corridor/places_suggest. Web search does NOT produce buttons. Use places tools first for finding stops, web_search for current conditions.
 
 ═══ OUTPUT ═══
 Reply with JSON: {{"assistant":"text","done":bool,"actions":[...],"tool_calls":[...]}}
 
-Actions — for each place from tool results or nearby data, include buttons using its exact id/lat/lng:
+Actions - for each place from tool results or nearby data, include buttons using its exact id/lat/lng:
   {{"type":"save","label":"Name","place_id":"id","place_name":"Name","lat":-27.5,"lng":153.0,"category":"cafe","description":"Brief vivid description."}}
   {{"type":"map","label":"Map · Name","place_id":"id","place_name":"Name","lat":-27.5,"lng":153.0,"category":"cafe"}}
   {{"type":"web","label":"Website","place_id":"id","place_name":"Name","url":"https://..."}}
   {{"type":"call","label":"Call","place_id":"id","place_name":"Name","tel":"0400..."}}
 
-You can reply AND search simultaneously — set done=false with tool_calls to keep exploring while the user sees your message. After tools return you'll get another turn to share findings with action buttons.{(' '+location_hint) if location_hint else ''}"""
+You can reply AND search simultaneously - set done=false with tool_calls to keep exploring while the user sees your message. After tools return you'll get another turn to share findings with action buttons.{(' '+location_hint) if location_hint else ''}"""
 
     return prompt
 
@@ -689,7 +723,7 @@ class GuideService:
                     # Have both web + places tools: web is done, pass places through
                     norm["tool_calls"] = non_web
                 else:
-                    # Only had web searches — make ONE more LLM call with results
+                    # Only had web searches - make ONE more LLM call with results
                     raw2 = await self._call_llm(sys_prompt, user_msg)
                     norm = _normalize_model_output(raw2)
                     raw_tcs2 = norm.get("tool_calls", [])
@@ -698,7 +732,7 @@ class GuideService:
                                 len(norm.get("assistant", "")),
                                 len(norm.get("actions", [])), len(raw_tcs2), tc_summary2,
                                 norm.get("done"))
-                    # Strip any further web_search calls — we only do one round
+                    # Strip any further web_search calls - we only do one round
                     norm["tool_calls"] = [tc for tc in (norm.get("tool_calls") or [])
                                           if isinstance(tc, dict) and tc.get("tool") != "web_search"]
 

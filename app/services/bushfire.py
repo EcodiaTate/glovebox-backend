@@ -22,10 +22,10 @@ Algorithm:
      HTML using regex.
   4. From FIRMS: parse CSV, filter hotspots within bbox, group nearby
      hotspots into clusters.
-  5. Merge both sources — NSW RFS fires with boundaries take priority.
+  5. Merge both sources - NSW RFS fires with boundaries take priority.
   6. Compute distance from route for each fire/hotspot.
 
-Cache TTL: 15 minutes (900s) — fires are time-critical.
+Cache TTL: 15 minutes (900s) - fires are time-critical.
 """
 from __future__ import annotations
 
@@ -328,7 +328,7 @@ async def _fetch_firms(
     """Fetch NASA FIRMS CSV for Australia."""
     api_key = settings.firms_map_key
     if not api_key:
-        warnings.append("bushfire:firms: FIRMS_MAP_KEY not configured — skipping satellite hotspot data.")
+        warnings.append("bushfire:firms: FIRMS_MAP_KEY not configured - skipping satellite hotspot data.")
         return None
 
     url = (

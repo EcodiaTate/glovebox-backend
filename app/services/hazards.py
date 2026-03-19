@@ -15,10 +15,10 @@ Sources (auto-selected by bbox → state detection):
   - National: RADAR roadworks/closures (federal, all states, ArcGIS FeatureServer)
   - QLD Parks: Park closure/alert RSS (parks.qld.gov.au)
   - NSW NPWS: National Parks park closure/alert RSS (nationalparks.nsw.gov.au)
-  - VIC Parks: Park closure/alert RSS (parks.vic.gov.au) — disabled until URL confirmed
-  - SA Parks: Park closure/alert RSS (parks.sa.gov.au) — disabled until URL confirmed
-  - NT Parks: Park closure/alert RSS (nt.gov.au) — disabled until URL confirmed
-  - TAS Parks: Park closure/alert RSS (parks.tas.gov.au) — disabled until URL confirmed
+  - VIC Parks: Park closure/alert RSS (parks.vic.gov.au) - disabled until URL confirmed
+  - SA Parks: Park closure/alert RSS (parks.sa.gov.au) - disabled until URL confirmed
+  - NT Parks: Park closure/alert RSS (nt.gov.au) - disabled until URL confirmed
+  - TAS Parks: Park closure/alert RSS (parks.tas.gov.au) - disabled until URL confirmed
 
 Key features:
   - National coverage (all states)

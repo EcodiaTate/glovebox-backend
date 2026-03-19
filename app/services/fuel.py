@@ -2,20 +2,20 @@
 """
 Fuel intelligence service for Roam.
 
-Data sources (all government / open data — no IP concerns):
-  - NSW FuelCheck V2 (NSW+ACT+TAS)  — Government-mandated station-level prices
+Data sources (all government / open data - no IP concerns):
+  - NSW FuelCheck V2 (NSW+ACT+TAS)  - Government-mandated station-level prices
                           https://api.nsw.gov.au/FuelPriceCheck/v2
                           V2 endpoints cover NSW and Tasmania on the same platform.
-  - WA FuelWatch (WA)               — Government-mandated station-level prices via RSS
+  - WA FuelWatch (WA)               - Government-mandated station-level prices via RSS
                           https://www.fuelwatch.wa.gov.au/fuelwatch/fuelWatchRSS
-  - Open Charge Map                 — EV charger locations nationally (CC-BY-SA)
+  - Open Charge Map                 - EV charger locations nationally (CC-BY-SA)
                           https://api.openchargemap.io/v3/poi/
 
 Remaining states requiring API registration:
-  - QLD: fuelpricesqld.com.au — register for API tokens (Informed Sources) ✓ implemented
-  - VIC: Servo Saver Public API — apply at service.vic.gov.au (24h data delay) ✓ implemented
-  - SA:  safuelpricinginformation.com.au — CBS/Informed Sources publisher registration ✓ implemented
-  - NT:  Contact NT Consumer Affairs — MyFuel NT API status unclear
+  - QLD: fuelpricesqld.com.au - register for API tokens (Informed Sources) ✓ implemented
+  - VIC: Servo Saver Public API - apply at service.vic.gov.au (24h data delay) ✓ implemented
+  - SA:  safuelpricinginformation.com.au - CBS/Informed Sources publisher registration ✓ implemented
+  - NT:  Contact NT Consumer Affairs - MyFuel NT API status unclear
 
 Range anxiety: along_route() computes max gap between fuel stops and emits a
 warning if any gap exceeds `no_fuel_gap_km` (default 200 km).
@@ -82,7 +82,7 @@ def _expand_bbox(bbox: BBox4, km: float) -> BBox4:
 
 
 # ══════════════════════════════════════════════════════════════
-# NSW + TAS FuelCheck provider (V2 API — OneGov gateway)
+# NSW + TAS FuelCheck provider (V2 API - OneGov gateway)
 # ══════════════════════════════════════════════════════════════
 # Migrated from api.nsw.gov.au (dead, returns 404 since ~2025) to
 # api.onegov.nsw.gov.au.  Swagger spec at:
@@ -109,7 +109,7 @@ def _expand_bbox(bbox: BBox4, km: float) -> BBox4:
 
 _nsw_log = logging.getLogger(__name__)
 
-# Module-level token cache — simple, sufficient for a single-process server.
+# Module-level token cache - simple, sufficient for a single-process server.
 _nsw_token_cache: Dict[str, Any] = {"token": None, "expires_at": 0.0}
 
 
@@ -132,7 +132,7 @@ async def _nsw_get_bearer_token(client: httpx.AsyncClient, warnings: List[str]) 
         )
         if resp.status_code != 200:
             warnings.append(f"nsw_fuel oauth HTTP {resp.status_code}")
-            _nsw_log.warning("nsw_fuel oauth token failed: HTTP %s — %s", resp.status_code, resp.text[:200])
+            _nsw_log.warning("nsw_fuel oauth token failed: HTTP %s - %s", resp.status_code, resp.text[:200])
             return None
         data = resp.json()
         token = data.get("access_token")
@@ -456,7 +456,7 @@ def _parse_ocm_pois(data: List[Dict[str, Any]], *, bbox: BBox4) -> List[EVCharge
 # ══════════════════════════════════════════════════════════════
 # WA FuelWatch RSS provider
 # ══════════════════════════════════════════════════════════════
-# Official WA Government feed — https://www.fuelwatch.wa.gov.au/fuelwatch/fuelWatchRSS
+# Official WA Government feed - https://www.fuelwatch.wa.gov.au/fuelwatch/fuelWatchRSS
 # Free, no auth. Product IDs: 1=ULP, 2=PULP, 4=Diesel, 5=LPG, 6=98RON, 11=E85
 # Each product has its own feed; we query them concurrently and deduplicate
 # stations by (lat, lng), merging fuel types across feeds.
@@ -557,7 +557,7 @@ async def _fetch_wa_fuelwatch(
     """
     Fetch WA FuelWatch RSS for all product IDs concurrently.
 
-    Deduplicates stations by (lat, lng) — merges fuel types from different
+    Deduplicates stations by (lat, lng) - merges fuel types from different
     product feeds into one FuelStation with multiple FuelPrice entries.
     """
     if not settings.wa_fuel_enabled:
@@ -584,7 +584,7 @@ async def _fetch_wa_fuelwatch(
         elif isinstance(result, list):
             all_items.extend(result)
 
-    # Deduplicate by (lat, lng) — build station map, merge fuel prices
+    # Deduplicate by (lat, lng) - build station map, merge fuel prices
     # Key: rounded (lat, lng) to handle minor float variation in same station
     station_map: Dict[Tuple[float, float], Dict[str, Any]] = {}
     for item in all_items:
@@ -710,7 +710,7 @@ async def _fetch_petrolspy(
             except (TypeError, ValueError):
                 continue
 
-            # Map prices — only include relevant=true entries
+            # Map prices - only include relevant=true entries
             fuel_prices: List[FuelPrice] = []
             for ps_key, canonical in _PETROLSPY_FUEL_MAP.items():
                 price_data = (item.get("prices") or {}).get(ps_key)
@@ -763,7 +763,7 @@ async def _fetch_petrolspy(
 # Operated by Informed Sources on behalf of QLD Treasury.
 # Swagger: https://fppdirectapi-prod.fuelpricesqld.com.au/swagger/docs/v1
 # Auth: Header "Authorization: FPDAPI SubscriberToken={token}"
-# No bbox query — fetch all QLD, filter client-side.
+# No bbox query - fetch all QLD, filter client-side.
 # ══════════════════════════════════════════════════════════════
 
 _QLD_BASE = "https://fppdirectapi-prod.fuelpricesqld.com.au"
@@ -836,7 +836,7 @@ async def _fetch_qld_fuel(
             if not canonical:
                 continue
             cents = float(price_val)
-            # API sometimes returns tenths of a cent — normalize to cpl
+            # API sometimes returns tenths of a cent - normalize to cpl
             if cents > 500:
                 cents = cents / 10.0
             price_map.setdefault(int(sid), []).append(FuelPrice(
@@ -877,7 +877,7 @@ async def _fetch_qld_fuel(
 # ══════════════════════════════════════════════════════════════
 # VIC Fair Fuel Open Data API (Servo Saver)
 # ══════════════════════════════════════════════════════════════
-# Official VIC Government API — all retailers legally required to report.
+# Official VIC Government API - all retailers legally required to report.
 # Base URL: https://api.fuel.service.vic.gov.au/open-data/v1
 # Auth: x-consumer-id header (issued by Service Victoria)
 # Data has ~24-hour delay after retailer submission.
@@ -981,7 +981,7 @@ async def _fetch_vic_fuel(
 # Same API contract as QLD fuelpricesqld.com.au but different base URL.
 # Auth: Header "Authorization: FPDAPI SubscriberToken={token}"
 # Register at: https://www.safuelpricinginformation.com.au/
-# No bbox query — fetch all SA, filter client-side.
+# No bbox query - fetch all SA, filter client-side.
 # ══════════════════════════════════════════════════════════════
 
 _SA_BASE = "https://fppdirectapi-prod.safuelpricinginformation.com.au"
@@ -1236,33 +1236,33 @@ class Fuel:
             tasks: List[Any] = []
             task_labels: List[str] = []
 
-            # NSW FuelCheck V2 — covers NSW + ACT + TAS
+            # NSW FuelCheck V2 - covers NSW + ACT + TAS
             if "nsw" in active_states or "act" in active_states or "tas" in active_states:
                 tasks.append(_fetch_nsw_fuel(client, bbox=bbox, warnings=warnings))
                 task_labels.append("nsw_fuel")
 
-            # WA FuelWatch — covers WA
+            # WA FuelWatch - covers WA
             if "wa" in active_states:
                 tasks.append(_fetch_wa_fuelwatch(client, bbox=bbox, warnings=warnings))
                 task_labels.append("wa_fuel")
 
-            # QLD Fuel Price Reporting — covers QLD (requires registration)
+            # QLD Fuel Price Reporting - covers QLD (requires registration)
             if "qld" in active_states and settings.qld_fuel_enabled and settings.qld_fuel_api_token:
                 tasks.append(_fetch_qld_fuel(client, bbox=bbox, warnings=warnings))
                 task_labels.append("qld_fuel")
 
-            # VIC Servo Saver — covers VIC (requires API Consumer ID)
+            # VIC Servo Saver - covers VIC (requires API Consumer ID)
             if "vic" in active_states and settings.vic_fuel_enabled and settings.vic_fuel_consumer_id:
                 tasks.append(_fetch_vic_fuel(client, bbox=bbox, warnings=warnings))
                 task_labels.append("vic_fuel")
 
-            # SA Fuel Pricing — covers SA (requires publisher registration)
+            # SA Fuel Pricing - covers SA (requires publisher registration)
             # Register at: https://www.safuelpricinginformation.com.au/
             if "sa" in active_states and settings.sa_fuel_enabled and settings.sa_fuel_api_token:
                 tasks.append(_fetch_sa_fuel(client, bbox=bbox, warnings=warnings))
                 task_labels.append("sa_fuel")
 
-            # EV chargers — national
+            # EV chargers - national
             tasks.append(_fetch_ev_chargers(client, bbox=bbox, warnings=warnings))
             task_labels.append("ev_chargers")
 
@@ -1280,7 +1280,7 @@ class Fuel:
                     nsw_stations, _ = result
                     stations.extend(nsw_stations)
 
-            # NT: MyFuel NT — API availability unclear, contact NT Consumer Affairs
+            # NT: MyFuel NT - API availability unclear, contact NT Consumer Affairs
 
         # Filter by requested fuel types
         if fuel_types:

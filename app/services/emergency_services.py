@@ -1,16 +1,16 @@
 # app/services/emergency_services.py
 """
-Emergency services overlay — Geoscience Australia Emergency Management Facilities.
+Emergency services overlay - Geoscience Australia Emergency Management Facilities.
 
 Data source : GA Emergency Management Facilities MapServer (CC-BY 4.0, no auth)
 Endpoint    : http://services.ga.gov.au/gis/rest/services/Emergency_Management_Facilities/MapServer
 Layers:
-  0 — AMBULANCE_STATION
-  1 — OTHER_EMERGENCY_MANAGEMENT_FACILITY
-  2 — POLICING_FACILITY
-  3 — METRO_FIRE_FACILITY
-  4 — RURAL_COUNTRY_FIRE_SERVICE_FACILITY
-  5 — SES_FACILITY
+  0 - AMBULANCE_STATION
+  1 - OTHER_EMERGENCY_MANAGEMENT_FACILITY
+  2 - POLICING_FACILITY
+  3 - METRO_FIRE_FACILITY
+  4 - RURAL_COUNTRY_FIRE_SERVICE_FACILITY
+  5 - SES_FACILITY
 
 Design:
 - Route polyline6 is decoded and sampled to build a bounding box.
@@ -199,7 +199,7 @@ async def _query_layer(
 
 class EmergencyServices:
     """
-    Emergency services overlay — hospitals, ambulance, police, fire, SES
+    Emergency services overlay - hospitals, ambulance, police, fire, SES
     near a route, sourced from Geoscience Australia (CC-BY 4.0).
     """
 

@@ -33,7 +33,7 @@ _DEFAULT_TTL: Dict[str, int] = {
     "general": 48,            # 2 days
 }
 
-# Cluster radius in km — observations within this distance are merged
+# Cluster radius in km - observations within this distance are merged
 _CLUSTER_RADIUS_KM = 1.0
 
 _R_KM = 6371.0

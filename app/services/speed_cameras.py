@@ -96,7 +96,7 @@ def _bbox_overlaps_brisbane(
 
 
 # ══════════════════════════════════════════════════════════════
-# Overpass helper — delegates to global gate
+# Overpass helper - delegates to global gate
 # ══════════════════════════════════════════════════════════════
 
 
@@ -297,8 +297,8 @@ async def _fetch_qld_cameras(
     """
     Fetch QLD speed cameras from OpenStreetMap via Overpass API.
 
-    The QLD Government CSV (RSCT_sites.csv) contains no coordinates — only
-    site codes and location names — so we use OSM's `highway=speed_camera`
+    The QLD Government CSV (RSCT_sites.csv) contains no coordinates - only
+    site codes and location names - so we use OSM's `highway=speed_camera`
     and `enforcement=maxspeed` nodes instead.  Overpass supports bbox
     filtering natively, so we only fetch cameras in the route corridor.
 
@@ -420,7 +420,7 @@ async def _fetch_act_cameras(
 
         all_cameras = []
         rows = data if isinstance(data, list) else (data.get("data") or [])
-        # Socrata JSON can be columnar — handle both dict-rows and list-rows
+        # Socrata JSON can be columnar - handle both dict-rows and list-rows
         meta_cols: Optional[List[str]] = None
         if isinstance(data, dict) and "meta" in data:
             try:

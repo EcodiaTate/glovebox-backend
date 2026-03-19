@@ -1134,9 +1134,9 @@ class _WaTrafficProvider:
 # No auth required. CC-BY 4.0.
 #
 # Useful incident types for Roam:
-#   VEHICLE — road crashes attended by emergency services
-#   FLOOD   — flood events affecting roads
-#   GRASS   — grass fires near roads
+#   VEHICLE - road crashes attended by emergency services
+#   FLOOD   - flood events affecting roads
+#   GRASS   - grass fires near roads
 
 _VIC_EMERGENCY_URL = (
     "https://services1.arcgis.com/vHnIGBHHqDR6y0CR/arcgis/rest/services"
@@ -1197,7 +1197,7 @@ class _VicEmergencyProvider:
         else:
             typ, sev = "incident", "minor"
 
-        headline = f"{incident_type.title()} — {location}" if location else f"VIC {incident_type.title()} incident"
+        headline = f"{incident_type.title()} - {location}" if location else f"VIC {incident_type.title()} incident"
         description = f"Status: {status}" if status else None
 
         upstream_id = str(props.get("objectid") or props.get("OBJECTID") or "").strip()
@@ -1378,11 +1378,11 @@ class _WaIncidentsProvider:
         location = str(props.get("Location") or "").strip()
         entry_date = props.get("EntryDate") or None
 
-        # Build description: "{Road}: {Location} — {IncidentType or ClosureType}"
+        # Build description: "{Road}: {Location} - {IncidentType or ClosureType}"
         type_label = incident_type or closure_type or ""
         _road_loc = ": ".join(p for p in [road, location] if p)
         description = (
-            f"{_road_loc} — {type_label}" if _road_loc and type_label
+            f"{_road_loc} - {type_label}" if _road_loc and type_label
             else _road_loc or type_label or None
         )
 
@@ -1407,7 +1407,7 @@ class _WaIncidentsProvider:
         if layer == 4 or "clos" in it_lower or "clos" in ct_lower:
             typ, sev = "closure", "major"
         elif layer == 11:
-            # Roads Opened With Conditions — passable but damaged/restricted
+            # Roads Opened With Conditions - passable but damaged/restricted
             typ, sev = "hazard", "moderate"
         elif layer == 2 or "roadwork" in it_lower:
             typ, sev = "roadwork", "minor"
@@ -1549,7 +1549,7 @@ class _NtTrafficProvider:
     restrictionType values observed:
       Road Closed, Impassable, With Caution, Weight And Or Vehicle Type Restriction
 
-    This also serves as the outback road conditions overlay  - 
+    This also serves as the outback road conditions overlay  -
     covers Tanami Road, Larapinta Drive, Plenty Highway, Stuart Highway, etc.
     """
 

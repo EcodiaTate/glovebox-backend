@@ -9,7 +9,10 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from app.core.contracts import BBox4, OfflineBundleManifest, RouteIntelligenceScore
+from app.core.contracts import (
+    BBox4, OfflineBundleManifest, RouteIntelligenceScore,
+    TripPreferences, resolve_categories, density_budget_multiplier,
+)
 from app.core.errors import bad_request, not_found
 from app.core.storage import get_manifest, put_score_pack
 from app.core.time import utc_now_iso
@@ -133,6 +136,8 @@ class BundleBuildRequest(BaseModel):
     styles: list[str] = []
     departure_iso: str | None = None
     avg_speed_kmh: float = 90.0
+    # Trip preferences - controls stop density & category filtering
+    trip_prefs: TripPreferences | None = None
 
 
 @router.post("/build", response_model=OfflineBundleManifest)
@@ -170,13 +175,25 @@ async def build_bundle(
     buffer_m = int(req.buffer_m or 5000)
     max_edges = int(req.max_edges or 2000000)
 
-    # 1) Fetch places FIRST — we need stop coordinates for the corridor.
+    # 1) Fetch places FIRST - we need stop coordinates for the corridor.
     #    search_bundle is sync (httpx.Client) so run in thread executor.
+    #    Pass trip preferences to control density + category filtering.
     loop = asyncio.get_event_loop()
     ppack = None
+
+    # Resolve categories and density from user preferences
+    _trip_prefs = req.trip_prefs
+    _enabled_cats = resolve_categories(_trip_prefs) if _trip_prefs else None
+    _density_mult = density_budget_multiplier(_trip_prefs.stop_density) if _trip_prefs else 1.0
+
     try:
         ppack = await loop.run_in_executor(
-            None, lambda: places.search_bundle(polyline6=req.geometry)
+            None,
+            lambda: places.search_bundle(
+                polyline6=req.geometry,
+                categories=_enabled_cats,
+                density_multiplier=_density_mult,
+            ),
         )
     except Exception as exc:
         logger.warning("bundle places fetch failed (non-fatal): %s", exc)
@@ -205,7 +222,7 @@ async def build_bundle(
     if not cpack:
         not_found("corridor_missing", f"no corridor pack found for {cmeta.corridor_key}")
 
-    # 3) All remaining overlays — run concurrently.
+    # 3) All remaining overlays - run concurrently.
 
     async def _safe(coro_or_awaitable, name: str):
         """Await a coroutine; return None and log on any exception."""
@@ -281,7 +298,7 @@ async def build_bundle(
         _safe(roadkill_svc.along_route(polyline6=req.geometry), "roadkill"),
     )
 
-    # 3) Route intelligence score — synchronous, uses overlay results gathered above.
+    # 3) Route intelligence score - synchronous, uses overlay results gathered above.
     score_pack = None
     score_key = None
     try:

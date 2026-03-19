@@ -847,7 +847,7 @@ def _enrich_camp_tags(tags: Dict[str, Any], extra: Dict[str, Any]) -> None:
 
     # ── Site types & configuration ────────────────────────────
 
-    # Pets / dogs — normalised to "yes" | "leashed" | "no"
+    # Pets / dogs - normalised to "yes" | "leashed" | "no"
     dog = tags.get("dog") or tags.get("dogs") or tags.get("pets")
     if dog in ("yes",):
         extra["pets_allowed"] = "yes"
@@ -992,7 +992,7 @@ def _enrich_camp_tags(tags: Dict[str, Any], extra: Dict[str, Any]) -> None:
         leisure = tags.get("leisure", "")
         landuse = tags.get("landuse", "")
 
-        # Parks authority heuristic — national/state parks generally charge
+        # Parks authority heuristic - national/state parks generally charge
         _PARKS_AUTHORITIES = (
             "npws", "parks victoria", "parks vic", "qpws", "dbca",
             "parks sa", "nt parks", "pws",
@@ -1004,7 +1004,7 @@ def _enrich_camp_tags(tags: Dict[str, Any], extra: Dict[str, Any]) -> None:
         fee_is_free = fee in ("no", "0")
         fee_is_set = fee not in ("", "no", "0")  # an explicit non-free fee tag
 
-        # Informal / bush camp override — takes priority over operator heuristic
+        # Informal / bush camp override - takes priority over operator heuristic
         if tags.get("informal") == "yes":
             if not fee_is_set:
                 extra["camp_type"] = "bush"
@@ -1191,7 +1191,7 @@ _STATE_REST_AREA_RULES: Dict[str, Dict[str, Any]] = {
     "qld":  {"allowed": True,       "max_hours": 20, "note": "QLD 20hr limit at designated rest areas"},
     "wa":   {"allowed": True,       "max_hours": 24, "note": "WA 24hr limit at designated rest areas"},
     "nt":   {"allowed": True,       "max_hours": None, "note": "NT generally allows rest area camping"},
-    "sa":   {"allowed": "check",    "max_hours": None, "note": "SA varies — check signage at each rest area"},
+    "sa":   {"allowed": "check",    "max_hours": None, "note": "SA varies - check signage at each rest area"},
     "tas":  {"allowed": "check",    "max_hours": None, "note": "TAS varies by council"},
     "nsw":  {"allowed": "prohibited","max_hours": None, "note": "NSW generally restricts rest area camping; check local council"},
     "vic":  {"allowed": "prohibited","max_hours": None, "note": "VIC generally prohibits rest area camping"},
@@ -1260,7 +1260,7 @@ def _enrich_overnight_rules(tags: Dict[str, Any], extra: Dict[str, Any]) -> None
                 extra["overnight_notes"] = rule["note"]
         else:
             extra["overnight_allowed"] = "check"
-            extra["overnight_notes"] = "Overnight rules vary — check signage"
+            extra["overnight_notes"] = "Overnight rules vary - check signage"
 
     # ── Free campsites are implicitly overnight-allowed ───────
     if "overnight_allowed" not in extra and tourism == "camp_site":
@@ -1557,7 +1557,7 @@ def _element_to_item(el: Dict[str, Any]) -> Optional[PlaceItem]:
             extra["diets"] = diets
 
     # ── Mapillary street-level photo ──────────────────────────
-    # Sequence/image ID — client resolves to thumb at
+    # Sequence/image ID - client resolves to thumb at
     # https://graph.mapillary.com/{id}?fields=thumb_1024_url&access_token=...
     # Stored offline as fallback when wikimedia thumb is absent
     mapillary = tags.get("mapillary")
@@ -1634,7 +1634,7 @@ def _build_overpass_ql(*, bbox: BBox4, filters: List[str], name_clause: str) -> 
 def _build_overpass_ql_tiled(*, bbox: BBox4, filters: List[str], name_clause: str) -> str:
     """Like _build_overpass_ql but with a short server-side timeout (8s).
 
-    Tile queries are small bbox areas — they should be fast.  If Overpass
+    Tile queries are small bbox areas - they should be fast.  If Overpass
     is slow, we'd rather skip a tile than block the whole corridor pipeline.
     """
     bbox_str = _overpass_bbox_str(bbox)
@@ -1745,7 +1745,7 @@ def _corridor_places_key(
 # Bundle-specific helpers: tiers, budget, cluster cap
 # ──────────────────────────────────────────────────────────────
 
-# Critical infrastructure — fuel and EV charging get a DEDICATED Overpass query
+# Critical infrastructure - fuel and EV charging get a DEDICATED Overpass query
 # with a much higher coord limit (only 2 OSM filters, so query stays small even
 # with 300+ sample points).  This prevents them from being squeezed out by the
 # larger tier-1 query timing out on long routes.
@@ -1753,10 +1753,10 @@ _CRITICAL_INFRA_CATS: List[PlaceCategory] = ["fuel", "ev_charging"]
 _CRITICAL_INFRA_BUFFER_KM = 30.0   # same wide radius as tier 1
 _CRITICAL_INFRA_MAX_COORDS = 300   # can afford many coords with only 2 filters
 
-# Tier 1 — things you *need* on a road trip (fuel, safety, sleep, food supply).
+# Tier 1 - things you *need* on a road trip (fuel, safety, sleep, food supply).
 # Wide search radius: towns can be 100 km off-route in the outback and still
-# be the only option.  No cluster cap — you want every servo, every hospital.
-# NOTE: fuel + ev_charging are excluded here — they have their own dedicated query.
+# be the only option.  No cluster cap - you want every servo, every hospital.
+# NOTE: fuel + ev_charging are excluded here - they have their own dedicated query.
 _BUNDLE_TIER1_CATS: List[PlaceCategory] = [
     "water", "water_fill", "toilet", "rest_area",
     "mechanic", "hospital", "pharmacy", "dump_point", "emergency_phone",
@@ -1767,7 +1767,7 @@ _BUNDLE_TIER1_CATS: List[PlaceCategory] = [
 _BUNDLE_TIER1_BUFFER_KM = 30.0     # towns/fuel up to 30 km either side
 _BUNDLE_TIER1_FRACTION  = 0.65     # 65 % of total budget reserved for tier 1
 
-# Tier 2 — things that enrich a trip but aren't survival-critical.
+# Tier 2 - things that enrich a trip but aren't survival-critical.
 # Tight corridor only; cluster-capped so one city doesn't eat all slots.
 _BUNDLE_TIER2_CATS: List[PlaceCategory] = [
     "cafe", "restaurant", "pub", "bar", "bakery",
@@ -1815,7 +1815,7 @@ def _bundle_places_budget(route_km: float) -> int:
 
 def _corridor_places_budget(extent_km: float) -> int:
     """
-    Dynamic corridor limit — scales with route *extent* (bbox diagonal).
+    Dynamic corridor limit - scales with route *extent* (bbox diagonal).
 
     Takes the geographic footprint of the route, NOT the traverse distance.
     A winding 700 km loop that only spans 120 km N-S gets budgeted as ~120 km,
@@ -1832,28 +1832,28 @@ def _corridor_places_budget(extent_km: float) -> int:
 
 
 # ──────────────────────────────────────────────────────────────
-# Relevance scoring — ranks places within each tier so the
+# Relevance scoring - ranks places within each tier so the
 # most useful/notable items are accepted first.
 # ──────────────────────────────────────────────────────────────
 
 # Category-intrinsic importance weights.  Higher = more likely to be a
 # meaningful stop vs an anonymous node.
 _CATEGORY_IMPORTANCE: Dict[str, float] = {
-    # Nature highlights — these are *why* people take road trips
+    # Nature highlights - these are *why* people take road trips
     "national_park": 5.0, "waterfall": 4.5, "hot_spring": 4.5,
     "cave": 4.5, "surf": 3.5,
     "swimming_hole": 4.0, "viewpoint": 4.0, "beach": 3.5, "hiking": 3.0,
     "fishing": 3.0,
-    # Culture — destination-worthy attractions
+    # Culture - destination-worthy attractions
     "museum": 4.5, "heritage": 4.0, "gallery": 3.5, "attraction": 3.5,
     "zoo": 3.5, "theme_park": 3.5, "winery": 3.0, "brewery": 3.0,
     "showground": 2.0,
     # Towns are anchor points
     "town": 3.0, "visitor_info": 2.5,
-    # Essential infrastructure — always valuable but not "destination"
+    # Essential infrastructure - always valuable but not "destination"
     "fuel": 2.0, "ev_charging": 2.0, "hospital": 2.0, "mechanic": 1.5, "emergency_phone": 2.5,
     "grocery": 1.5, "pharmacy": 1.5,
-    # Accommodation — critical for trip planning, boosted
+    # Accommodation - critical for trip planning, boosted
     "camp": 4.0, "hotel": 2.5, "motel": 2.5, "hostel": 2.5,
     # Amenities
     "rest_area": 2.0, "dump_point": 1.5, "shower": 1.5,
@@ -1887,7 +1887,7 @@ def _score_place(
     # 1. Category base weight
     score += _CATEGORY_IMPORTANCE.get(str(item.category), 1.0)
 
-    # 2. Data richness signals — real, well-documented places
+    # 2. Data richness signals - real, well-documented places
     if not extra.get("synthetic_name"):
         score += 2.0  # has a real name
     if extra.get("website"):
@@ -1903,13 +1903,13 @@ def _score_place(
     if extra.get("address"):
         score += 0.3
 
-    # 3. Wikidata / Wikipedia — strong notability signal
+    # 3. Wikidata / Wikipedia - strong notability signal
     if extra.get("wikidata"):
         score += 3.0
     if extra.get("wikipedia"):
         score += 2.0
 
-    # 4. Landmark boost — match against known regional highlights
+    # 4. Landmark boost - match against known regional highlights
     if landmark_names and item.name:
         name_lower = item.name.lower()
         for landmark in landmark_names:
@@ -1956,11 +1956,11 @@ def _score_place(
         elif len(fuel_types) >= 1:
             score += 0.5
 
-    # 7. Elevation data — viewpoints/peaks with known elevation are more notable
+    # 7. Elevation data - viewpoints/peaks with known elevation are more notable
     if extra.get("elevation_m") and item.category in ("viewpoint", "hiking", "national_park"):
         score += 0.5
 
-    # 8. Cuisine info — restaurants with cuisine tags are better documented
+    # 8. Cuisine info - restaurants with cuisine tags are better documented
     if extra.get("cuisine"):
         score += 0.3
     if extra.get("diets"):
@@ -1980,7 +1980,7 @@ def _score_place(
 # Regex to extract proper-noun landmark names from the region knowledge text.
 # Matches capitalized multi-word names (2-6 words) that aren't sentence starters.
 _LANDMARK_PATTERN = re.compile(
-    r"(?<=[:\.\—–,])\s*"              # preceded by punctuation
+    r"(?<=[:\.\-–,])\s*"              # preceded by punctuation
     r"([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,5})"  # 1-6 capitalized words
     r"(?:\s*(?:NP|National Park|Museum|Gallery|Falls|Gorge|Beach|"
     r"Lookout|Walk|Trail|Cave|Pool|Springs?|Range|Island|"
@@ -2084,7 +2084,7 @@ def _landmarks_for_route(
 # Wikimedia Commons thumbnail resolution
 # ──────────────────────────────────────────────────────────────
 
-_WIKI_THUMB_WIDTH = 400  # px — small enough for bundles, big enough to look good
+_WIKI_THUMB_WIDTH = 400  # px - small enough for bundles, big enough to look good
 
 _COMMONS_URL_TEMPLATE = (
     "https://commons.wikimedia.org/w/thumb.php?f={filename}&w={width}"
@@ -2109,7 +2109,7 @@ def _resolve_thumbnail(tags: Dict[str, Any]) -> Optional[str]:
     """
     Try to derive a small thumbnail URL from OSM tags.
     Priority: wikimedia_commons > image > wikidata (via thumb API).
-    Returns a URL string or None.  Never makes network calls — uses
+    Returns a URL string or None.  Never makes network calls - uses
     deterministic URL construction only.
     """
     # 1. Direct Wikimedia Commons file reference
@@ -2121,10 +2121,10 @@ def _resolve_thumbnail(tags: Dict[str, Any]) -> Optional[str]:
             if wmc.startswith("File:"):
                 return _wikimedia_thumb_url(wmc)
         elif not wmc.startswith("http"):
-            # Bare filename — assume Commons
+            # Bare filename - assume Commons
             return _wikimedia_thumb_url(wmc)
         elif "wikimedia.org" in wmc or "wikipedia.org" in wmc:
-            # Already a URL — pass through (client will fetch directly)
+            # Already a URL - pass through (client will fetch directly)
             return wmc[:500]
 
     # 2. Wikidata entity → use Special:FilePath (auto-resolves to main image)
@@ -2153,7 +2153,7 @@ def _route_km_from_polyline(poly6: str) -> float:
 
 
 def _route_extent_km(poly6: str) -> float:
-    """Geographic extent of a route — bbox diagonal in km.
+    """Geographic extent of a route - bbox diagonal in km.
 
     Unlike _route_km_from_polyline (which sums every segment and grows with
     back-tracking / winding), this measures the *footprint* of the route.
@@ -2235,26 +2235,26 @@ def _cluster_cap_tier2(
 
 
 # ──────────────────────────────────────────────────────────────
-# Corridor diversity — per-category caps + relevance scoring
+# Corridor diversity - per-category caps + relevance scoring
 # ──────────────────────────────────────────────────────────────
 # Max fraction of total budget a single category can consume.
 # High-value trip categories (camp, nature) get generous caps;
 # low-value high-volume categories (ATM, laundromat) get tight caps.
 
 _CORRIDOR_CAT_CAP_FRACTION: Dict[str, float] = {
-    # Safety-critical — generous
+    # Safety-critical - generous
     "fuel":             0.15,
     "ev_charging":      0.10,
     "hospital":         0.05,
     "mechanic":         0.05,
     "pharmacy":         0.04,
     "emergency_phone":  0.03,
-    # Accommodation — generous, core trip planning
+    # Accommodation - generous, core trip planning
     "camp":             0.15,
     "hotel":            0.08,
     "motel":            0.08,
     "hostel":           0.06,
-    # Amenities — important but not unlimited
+    # Amenities - important but not unlimited
     "rest_area":        0.08,
     "toilet":           0.05,
     "water":            0.05,
@@ -2263,11 +2263,11 @@ _CORRIDOR_CAT_CAP_FRACTION: Dict[str, float] = {
     "shower":           0.04,
     "grocery":          0.06,
     "town":             0.08,
-    # Low-value / high-volume — tight caps
+    # Low-value / high-volume - tight caps
     "atm":              0.02,
     "laundromat":       0.02,
     "bar":              0.03,
-    # Nature & outdoors — generous, these are why people roam
+    # Nature & outdoors - generous, these are why people roam
     "national_park":    0.08,
     "viewpoint":        0.08,
     "waterfall":        0.06,
@@ -2279,7 +2279,7 @@ _CORRIDOR_CAT_CAP_FRACTION: Dict[str, float] = {
     "cave":             0.04,
     "fishing":          0.04,
     "surf":             0.04,
-    # Food & drink — moderate
+    # Food & drink - moderate
     "cafe":             0.05,
     "restaurant":       0.05,
     "bakery":           0.04,
@@ -2313,7 +2313,7 @@ def _corridor_diversify(
     scored: List[Tuple[float, PlaceItem]] = []
     for it in candidates:
         s = _score_place(it)
-        # Proximity bonus — closer to route = more relevant
+        # Proximity bonus - closer to route = more relevant
         d = _min_distance_to_samples_m(it.lat, it.lng, samples)
         # Items within 5km of route get a bonus, items far away get penalised
         if d < 5000:
@@ -2407,7 +2407,7 @@ async def _wikidata_enrich_store(store: PlacesStore) -> None:
     camp/caravan/heritage/viewpoint places in the store that have a `wikidata`
     OSM tag but haven't been enriched yet (or are stale > 30 days).
 
-    Runs silently — all errors are logged and swallowed so the calling
+    Runs silently - all errors are logged and swallowed so the calling
     request is never affected.
     """
     from app.core.wikidata import enrich_qids
@@ -2558,7 +2558,7 @@ class Places:
         return pack
 
     # ──────────────────────────────────────────────────────────
-    # Bundle search — two-tier, dynamic budget
+    # Bundle search - two-tier, dynamic budget
     # ──────────────────────────────────────────────────────────
     #
     # Tier 1 (essentials): wide radius (100 km), no cluster cap.
@@ -2573,6 +2573,7 @@ class Places:
         *,
         polyline6: str,
         categories: List[PlaceCategory] | None = None,
+        density_multiplier: float = 1.0,
     ) -> PlacesPack:
         """
         Offline-bundle-optimised place search.
@@ -2580,13 +2581,17 @@ class Places:
         Returns a dynamically-sized, relevance-structured PlacesPack ready
         for ZIP bundling.  Pass `categories` to override the default tier
         split (useful for testing); omit for production use.
+
+        `density_multiplier` scales the total budget (default 1.0 = current
+        behaviour).  Values < 1 reduce stops, > 1 increase them.
+        Driven by user's stop_density preference (1–5 → 0.15–2.0).
         """
         route_km = _route_km_from_polyline(polyline6)
         if route_km < 1.0:
-            # Degenerate route — fall back gracefully
+            # Degenerate route - fall back gracefully
             route_km = 50.0
 
-        total_budget = _bundle_places_budget(route_km)
+        total_budget = int(_bundle_places_budget(route_km) * max(0.1, density_multiplier))
         t1_budget = int(total_budget * _BUNDLE_TIER1_FRACTION)
         t2_budget = total_budget - t1_budget
 
@@ -2624,7 +2629,7 @@ class Places:
             )
             return pack
 
-        logger.info("search_bundle cache MISS — running two-tier pipeline")
+        logger.info("search_bundle cache MISS - running two-tier pipeline")
 
         # ── Sample route at 8 km intervals ───────────────────
         samples = _sample_polyline(polyline6, 8.0, include_endpoints=True)
@@ -2673,9 +2678,9 @@ class Places:
             lst.append(it)
 
         # ═══════════════════════════════════════════════════════
-        # OVERPASS — BOTH TIERS IN PARALLEL
+        # OVERPASS - BOTH TIERS IN PARALLEL
         # Tier 1 (essentials, wide) and Tier 2 (leisure, tight)
-        # are independent queries — fire them concurrently so the
+        # are independent queries - fire them concurrently so the
         # total wait is max(t1, t2) instead of t1 + t2.
         # ═══════════════════════════════════════════════════════
 
@@ -2749,7 +2754,7 @@ class Places:
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
             f1 = pool.submit(_overpass_fetch_tier, t1_filters, t1_buffer_m, "tier1")
-            # Fetch tier 2 with the wider high-value buffer — the per-item
+            # Fetch tier 2 with the wider high-value buffer - the per-item
             # acceptance filter below applies the tight buffer to generic
             # categories while letting high-value destinations through at 15 km.
             f2 = pool.submit(_overpass_fetch_tier, t2_filters, t2_hv_buffer_m, "tier2")
@@ -2784,7 +2789,7 @@ class Places:
             )
 
         # ═══════════════════════════════════════════════════════
-        # TIER 1 — collect all candidates, score, sort, accept
+        # TIER 1 - collect all candidates, score, sort, accept
         # Critical infra (fuel/EV) are collected alongside other
         # tier-1 items, then the combined pool is ranked by score.
         # ═══════════════════════════════════════════════════════
@@ -2832,7 +2837,7 @@ class Places:
             except Exception as e:
                 logger.warning("search_bundle tier1 supa FAILED: %r", e)
 
-        # Critical infra (fuel/EV) are RESERVED — never budget-squeezed.
+        # Critical infra (fuel/EV) are RESERVED - never budget-squeezed.
         # They get their own dedicated Overpass query precisely because they
         # are safety-critical; dropping them causes "No fuel ahead" while
         # fuel icons are visible on the map via the fuel overlay layer.
@@ -2852,7 +2857,7 @@ class Places:
                      len(t1_candidates), len(ci_reserved), len(t1_items), t1_budget)
 
         # ═══════════════════════════════════════════════════════
-        # TIER 2 — collect all candidates, then diversity+score
+        # TIER 2 - collect all candidates, then diversity+score
         # cluster cap handles both scoring and category diversity.
         # ═══════════════════════════════════════════════════════
 
@@ -3026,7 +3031,7 @@ class Places:
         # STEP 2: LOCAL STORE FIRST
         # ──────────────────────────────────────────────────────
         # Query local store first. If it has good coverage, we
-        # can skip or reduce the Overpass query — this avoids
+        # can skip or reduce the Overpass query - this avoids
         # rate-limiting and makes repeat/nearby routes instant.
         # ──────────────────────────────────────────────────────
 
@@ -3058,7 +3063,7 @@ class Places:
         # ──────────────────────────────────────────────────────
         # STEP 2.5: SUPABASE SUPPLEMENT (before Overpass)
         # ──────────────────────────────────────────────────────
-        # Query Supabase first — it has accumulated POI data from
+        # Query Supabase first - it has accumulated POI data from
         # all previous corridor/bundle queries.  This is fast
         # (~200ms) and may provide enough coverage to skip
         # Overpass entirely.
@@ -3150,7 +3155,7 @@ class Places:
                 non_ci_cats[i : i + chunk_size]
                 for i in range(0, len(non_ci_cats), chunk_size)
             ]
-            # Reduce max_coords for main batches — 50 is plenty for
+            # Reduce max_coords for main batches - 50 is plenty for
             # the around filter and keeps the query fast.
             main_max_coords = 50
 
@@ -3198,7 +3203,7 @@ class Places:
                 local_count, local_ci_count,
             )
 
-        # (Step 4 moved to Step 2.5 above — Supabase now runs BEFORE Overpass)
+        # (Step 4 moved to Step 2.5 above - Supabase now runs BEFORE Overpass)
 
         # ──────────────────────────────────────────────────────
         # STEP 5: SCORE, CAP PER-CATEGORY, AND SELECT
@@ -3537,7 +3542,7 @@ class Places:
         """Return up to `limit` POI suggestions for the trip stop list.
 
         Strategy:
-          1. Pick candidate categories — prioritise types NOT already in the trip
+          1. Pick candidate categories - prioritise types NOT already in the trip
              (category diversity), but include under-represented essentials too.
           2. Query Overpass within the trip bounding box for those categories.
           3. Score each candidate: proximity to route midpoint + category importance
@@ -3559,7 +3564,7 @@ class Places:
             "picnic", "park",
         ]
 
-        # Select up to 10 candidate categories — prefer those NOT in existing stops,
+        # Select up to 10 candidate categories - prefer those NOT in existing stops,
         # but include a few existing ones if they're essential infrastructure.
         ALWAYS_SUGGEST: Set[str] = {"fuel", "camp", "grocery"}
         candidates: List[PlaceCategory] = []

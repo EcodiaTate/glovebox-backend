@@ -1,6 +1,6 @@
 # app/services/flood.py
 """
-Flood gauge overlay service — BOM KiWIS real-time river heights.
+Flood gauge overlay service - BOM KiWIS real-time river heights.
 
 Station list  : bom.gov.au/waterdata/data/stationdata.json (~8000 stations)
 Live readings : BOM KiWIS queryServices API (no auth required)
@@ -57,7 +57,7 @@ _WANTED_PARAM_TYPES = {"Water Course Level", "Water Course Discharge"}
 
 # QLD flood cameras GeoJSON feed (CC-BY 4.0, no auth)
 _QLD_FLOOD_CAMERAS_URL = "https://data.qldtraffic.qld.gov.au/floodcameras.geojson"
-_QLD_FLOOD_CAMERAS_TTL = 300  # 5 min — real-time feed
+_QLD_FLOOD_CAMERAS_TTL = 300  # 5 min - real-time feed
 
 
 # ══════════════════════════════════════════════════════════════
@@ -483,7 +483,7 @@ async def _fetch_qld_flood_cameras(
         warnings.append(f"flood:qld_flood_cameras fetch failed: {e}")
         return []
 
-    # Sample route for distance calc — every 10th point
+    # Sample route for distance calc - every 10th point
     samples = route_coords[::10] if route_coords else []
 
     cameras: List[FloodCamera] = []
@@ -691,7 +691,7 @@ class Flood:
 
         # Always include the severity-estimate disclaimer
         warnings.append(
-            "Flood severity ratings are relative estimates only — "
+            "Flood severity ratings are relative estimates only - "
             "check www.bom.gov.au/water for official flood classifications."
         )
 
@@ -740,7 +740,7 @@ class Flood:
             if stations:
                 put_flood_stations(self.conn, fetched_at=utc_now_iso(), stations=stations)
                 return stations
-            warnings.append("BOM station list returned empty — using cached copy if available.")
+            warnings.append("BOM station list returned empty - using cached copy if available.")
         except Exception as e:
             warnings.append(f"flood:station_list fetch failed: {e}")
 

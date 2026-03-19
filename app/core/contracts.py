@@ -19,6 +19,73 @@ class TripStop(BaseModel):
     name: Optional[str] = None
     lat: float
     lng: float
+    arrive_at: Optional[str] = None   # ISO8601 local planned arrival
+    depart_at: Optional[str] = None   # ISO8601 local planned departure
+
+
+# High-level category groups - each maps to multiple PlaceCategory values
+CategoryGroup = Literal[
+    "essentials",     # fuel, ev_charging, rest_area, toilet, water, mechanic, hospital, pharmacy
+    "food",           # bakery, cafe, restaurant, fast_food, pub, bar
+    "accommodation",  # camp, hotel, motel, hostel
+    "nature",         # viewpoint, waterfall, swimming_hole, beach, national_park, hiking, picnic, hot_spring, cave, fishing, surf
+    "culture",        # visitor_info, museum, gallery, heritage, winery, brewery, attraction, market, library, showground
+    "family",         # playground, pool, zoo, theme_park, dog_park, golf, cinema
+    "supplies",       # grocery, town, atm, laundromat, dump_point
+]
+
+
+class TripPreferences(BaseModel):
+    """User-facing trip preferences controlling enrichment."""
+    stop_density: int = Field(default=3, ge=1, le=5)   # 1=bare minimum, 5=everything
+    categories: Dict[str, bool] = Field(default_factory=lambda: {
+        "essentials": True,
+        "food": True,
+        "accommodation": True,
+        "nature": True,
+        "culture": True,
+        "family": True,
+        "supplies": True,
+    })
+
+
+# Maps CategoryGroup → PlaceCategory values
+CATEGORY_GROUP_MAP: Dict[str, List[str]] = {
+    "essentials":     ["fuel", "ev_charging", "rest_area", "toilet", "water", "mechanic", "hospital", "pharmacy", "emergency_phone"],
+    "food":           ["bakery", "cafe", "restaurant", "fast_food", "pub", "bar"],
+    "accommodation":  ["camp", "hotel", "motel", "hostel"],
+    "nature":         ["viewpoint", "waterfall", "swimming_hole", "beach", "national_park", "hiking", "picnic", "hot_spring", "cave", "fishing", "surf"],
+    "culture":        ["visitor_info", "museum", "gallery", "heritage", "winery", "brewery", "attraction", "market", "library", "showground"],
+    "family":         ["playground", "pool", "zoo", "theme_park", "dog_park", "golf", "cinema"],
+    "supplies":       ["grocery", "town", "atm", "laundromat", "dump_point", "shower", "water_fill"],
+}
+
+
+def resolve_categories(prefs: Optional[TripPreferences] = None) -> List[str]:
+    """Expand TripPreferences into a flat list of enabled PlaceCategory strings."""
+    if prefs is None:
+        # All categories enabled
+        cats: List[str] = []
+        for group_cats in CATEGORY_GROUP_MAP.values():
+            cats.extend(group_cats)
+        return sorted(set(cats))
+    enabled: List[str] = []
+    for group, group_cats in CATEGORY_GROUP_MAP.items():
+        if prefs.categories.get(group, True):
+            enabled.extend(group_cats)
+    return sorted(set(enabled))
+
+
+def density_budget_multiplier(density: int) -> float:
+    """Map stop_density 1-5 to a budget multiplier for places searches.
+
+    1 = 0.15  (bare minimum - fuel + rest only)
+    2 = 0.45  (light - essentials + a few highlights)
+    3 = 1.0   (balanced - default, current behaviour)
+    4 = 1.5   (generous - more stops)
+    5 = 2.0   (everything - maximum enrichment)
+    """
+    return {1: 0.15, 2: 0.45, 3: 1.0, 4: 1.5, 5: 2.0}.get(density, 1.0)
 
 
 class BBox4(BaseModel):
@@ -171,7 +238,7 @@ class CorridorGraphMeta(BaseModel):
     algo_version: str
     created_at: str
     bytes: int
-    # Optional inline pack — avoids a separate GET that may hit a different instance
+    # Optional inline pack - avoids a separate GET that may hit a different instance
     pack: Optional["CorridorGraphPack"] = None
 
 
@@ -343,6 +410,7 @@ class CorridorPlacesRequest(BaseModel):
     # Route polyline for true corridor search
     geometry: Optional[str] = None          # Polyline6 of the route
     buffer_km: Optional[float] = 35.0       # Corridor buffer radius in km
+    stop_density: int = Field(default=3, ge=1, le=5)  # 1=bare minimum, 5=everything
 
 
 class PlacesSuggestRequest(BaseModel):
@@ -351,6 +419,7 @@ class PlacesSuggestRequest(BaseModel):
     radius_m: int = 15000
     categories: List[PlaceCategory] = Field(default_factory=list)
     limit_per_sample: int = 150
+    stop_density: int = Field(default=3, ge=1, le=5)  # 1=bare minimum, 5=everything
 
 
 class PlacesSuggestionCluster(BaseModel):
@@ -443,7 +512,7 @@ class WirePlace(BaseModel):
     hours: Optional[str] = None
     phone: Optional[str] = None
     website: Optional[str] = None
-    # Free camping fields — populated for camp + rest_area categories
+    # Free camping fields - populated for camp + rest_area categories
     camp_type: Optional[str] = None
     free: Optional[bool] = None
     price_per_night_aud: Optional[float] = None
@@ -479,6 +548,8 @@ class GuideContext(BaseModel):
     manifest_route_key: Optional[str] = None
     offline_stale: Optional[bool] = None
 
+    stop_density: Optional[int] = None  # 1-5, from trip prefs
+
     progress: Optional[TripProgress] = None
 
     traffic_summary: Optional[Dict[str, Any]] = None
@@ -490,6 +561,11 @@ class GuideContext(BaseModel):
     weather_summary: Optional[Dict[str, Any]] = None
     fuel_benchmarks: Optional[Dict[str, Dict[str, float]]] = None  # city -> {"unleaded": 182.5, "diesel": 167.7}
 
+    # Live driver state - fuel, fatigue, speed, night, temp, ETA
+    driver_state: Optional[Dict[str, Any]] = None
+    # Next challenge: most critical upcoming issue on route
+    next_challenge: Optional[Dict[str, Any]] = None
+
 
 class GuideAction(BaseModel):
     """Structured UI action rendered as a button/pill in the chat."""
@@ -499,11 +575,11 @@ class GuideAction(BaseModel):
     place_name: Optional[str] = None
     url: Optional[str] = None
     tel: Optional[str] = None
-    # For type="map" — lat/lng to center the map on
+    # For type="map" - lat/lng to center the map on
     lat: Optional[float] = None
     lng: Optional[float] = None
     category: Optional[str] = None
-    # For type="save" — enriched place listing for the Found tab
+    # For type="save" - enriched place listing for the Found tab
     description: Optional[str] = None  # 1-2 sentence prose description
 
 
@@ -1257,7 +1333,7 @@ class RoadkillOverlay(BaseModel):
     created_at: str
     hotspots: List[RoadkillHotspot] = Field(default_factory=list)
     total_observations: int = 0
-    coverage_note: str = "NSW only — data from NSW BioNet Animal Vehicle Strike dataset"
+    coverage_note: str = "NSW only - data from NSW BioNet Animal Vehicle Strike dataset"
     attribution: str = "© NSW BioNet (CC BY 3.0 AU)"
     warnings: List[str] = Field(default_factory=list)
 
@@ -1283,7 +1359,7 @@ class NearbyRoamer(BaseModel):
     speed_kmh: float
     heading_deg: float
     last_pinged_at: str              # ISO8601 UTC
-    predicted_at: str                # ISO8601 UTC — when prediction was computed
+    predicted_at: str                # ISO8601 UTC - when prediction was computed
     distance_km: float               # from querying user's position
     confidence: Literal["high", "medium", "low"]  # degrades with Δt
 
@@ -1325,7 +1401,7 @@ class UserObservation(BaseModel):
     message: Optional[str] = None
     value: Optional[str] = None      # e.g. "189.9" for fuel_price, "corrugated" for road_condition
     created_at: str                   # ISO8601 UTC
-    expires_at: Optional[str] = None  # ISO8601 UTC — auto-expire after TTL
+    expires_at: Optional[str] = None  # ISO8601 UTC - auto-expire after TTL
 
 
 class ObservationSubmitRequest(BaseModel):

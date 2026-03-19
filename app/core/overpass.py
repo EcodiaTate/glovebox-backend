@@ -51,7 +51,7 @@ _RETRYABLE = frozenset({429, 502, 503, 504})
 
 # ── State ─────────────────────────────────────────────────────
 
-# SINGLE unified semaphore — shared by sync and async callers.
+# SINGLE unified semaphore - shared by sync and async callers.
 # This prevents sync places queries from starving async overlay queries.
 _global_sem = threading.Semaphore(_MAX_CONCURRENT)
 
@@ -177,7 +177,7 @@ def overpass_fetch_sync(
     """
     Synchronous version for use in thread pools.
 
-    Shares the same _global_sem with the async path — this prevents
+    Shares the same _global_sem with the async path - this prevents
     sync places queries from starving async overlay queries.
     """
     timeout = timeout_s or float(getattr(settings, "overpass_timeout_s", 25))

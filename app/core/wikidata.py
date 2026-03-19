@@ -3,8 +3,8 @@
 Wikidata enrichment for POI items that carry a `wikidata` OSM tag.
 
 Fetches two properties per entity:
-  P18  — main image (Wikimedia Commons filename)
-  P856 — official website URL
+  P18  - main image (Wikimedia Commons filename)
+  P856 - official website URL
 
 For each P18 image we also call the Commons imageinfo API to resolve:
   - A thumbnail URL (400 px)
@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 _WIKIDATA_API = "https://www.wikidata.org/w/api.php"
 _COMMONS_API  = "https://commons.wikimedia.org/w/api.php"
-_THUMB_WIDTH  = 400   # px — match existing _WIKI_THUMB_WIDTH in places.py
+_THUMB_WIDTH  = 400   # px - match existing _WIKI_THUMB_WIDTH in places.py
 _BATCH_SIZE   = 50    # max Q-IDs / filenames per API call
 
 # Licences we will accept for offline caching in a commercial product.
@@ -150,7 +150,7 @@ async def _fetch_wikidata_claims(
 ) -> Dict[str, Tuple[Optional[str], Optional[str]]]:
     """
     Returns {qid: (website, image_filename)} for each Q-ID.
-    Uses the wbgetentities action — one HTTP call per batch.
+    Uses the wbgetentities action - one HTTP call per batch.
     """
     params = {
         "action":   "wbgetentities",
@@ -180,7 +180,7 @@ async def _fetch_wikidata_claims(
         website    = _first_string_value(claims.get("P856") or [])
         image_file = _first_string_value(claims.get("P18")  or [])
 
-        # P18 values are bare filenames like "Foo.jpg" — normalise to "File:Foo.jpg"
+        # P18 values are bare filenames like "Foo.jpg" - normalise to "File:Foo.jpg"
         if image_file and not image_file.startswith("File:"):
             image_file = f"File:{image_file}"
 
@@ -209,7 +209,7 @@ async def _fetch_commons_imageinfo(
 ) -> Dict[str, Dict[str, str]]:
     """
     Returns {filename: {thumbnail_url, licence, attribution}} for each file.
-    Uses the query+imageinfo action — one HTTP call per batch.
+    Uses the query+imageinfo action - one HTTP call per batch.
     """
     out: Dict[str, Dict[str, str]] = {}
 
@@ -281,6 +281,6 @@ async def _fetch_commons_imageinfo(
 
 
 def _strip_html(text: str) -> str:
-    """Very minimal HTML tag stripper — avoids importing html.parser for speed."""
+    """Very minimal HTML tag stripper - avoids importing html.parser for speed."""
     import re
     return re.sub(r"<[^>]+>", "", text).strip()

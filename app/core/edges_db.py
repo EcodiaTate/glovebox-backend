@@ -377,7 +377,7 @@ class EdgesDBPostgres(EdgesDB):
     def query_by_node_ids(self, node_ids: List[int]) -> List[EdgeRow]:
         if not node_ids:
             return []
-        # Use UNION of two index scans instead of OR — each branch uses
+        # Use UNION of two index scans instead of OR - each branch uses
         # a single B-tree index (idx_edges_from_id / idx_edges_to_id)
         # which is much faster than a BitmapOr on large IN lists.
         results: List[EdgeRow] = []
@@ -451,7 +451,7 @@ class EdgesDBPostgres(EdgesDB):
         Builds a narrow corridor as the UNION of:
           - The route spine LINESTRING buffered by spine_buffer_m (narrow tube)
           - All stops as a MULTIPOINT buffered by stop_buffer_m (circles that merge)
-        Much tighter than a convex hull — follows the actual road shape.
+        Much tighter than a convex hull - follows the actual road shape.
         """
         if not spine_points:
             return []

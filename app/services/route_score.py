@@ -1,6 +1,6 @@
 # app/services/route_score.py
 """
-Route Intelligence Score — composite scoring from all overlays.
+Route Intelligence Score - composite scoring from all overlays.
 
 Weights:
   Safety     35%
@@ -58,8 +58,8 @@ def _score_advice(score: float) -> str:
     if score >= 4.0:
         return "Check conditions carefully before departing"
     if score >= 2.0:
-        return "Significant concerns — plan carefully, carry supplies"
-    return "Serious safety risks — consider delaying travel"
+        return "Significant concerns - plan carefully, carry supplies"
+    return "Serious safety risks - consider delaying travel"
 
 
 # ──────────────────────────────────────────────────────────────
@@ -81,7 +81,7 @@ def _compute_safety(
     # Traffic: tiered deductions by severity and type.
     # Philosophy: a "major" event means significant disruption (detour, delays),
     # not necessarily life-threatening. Multiple events of the same type exhibit
-    # diminishing marginal impact — the 5th roadwork is less consequential than the 1st.
+    # diminishing marginal impact - the 5th roadwork is less consequential than the 1st.
     if traffic:
         # Major closures/flooding: -2 for first, -1 for second, capped at -3 total
         major_blocks = [
@@ -188,7 +188,7 @@ def _compute_safety(
     )
     if has_flood_risk and has_coverage_gap:
         score -= 1.5
-        factors.append("Flood risk in area with no mobile coverage — rescue access limited")
+        factors.append("Flood risk in area with no mobile coverage - rescue access limited")
 
     # Hazard + no coverage = can't report or call for help
     has_high_hazard = hazards and any(e.severity == "high" for e in hazards.items)
@@ -196,7 +196,7 @@ def _compute_safety(
         score -= 1.0
         factors.append("High-severity hazard in coverage dead zone")
 
-    # Bushfire + no coverage = critical — can't receive emergency alerts
+    # Bushfire + no coverage = critical - can't receive emergency alerts
     has_bushfire_risk = bushfire and any(
         f.alert_level and f.alert_level.lower() in ("emergency warning", "emergency", "watch and act")
         and (f.distance_from_route_km is None or f.distance_from_route_km < 50)
@@ -204,7 +204,7 @@ def _compute_safety(
     )
     if has_bushfire_risk and has_coverage_gap:
         score -= 2.0
-        factors.append("Active bushfire near route with no mobile coverage — cannot receive alerts")
+        factors.append("Active bushfire near route with no mobile coverage - cannot receive alerts")
 
     # Wildlife twilight + poor visibility (weather) = compounded animal strike risk
     has_wildlife_twilight = wildlife and any(
@@ -235,7 +235,7 @@ def _compute_conditions(
     factors: List[str] = []
 
     # Traffic: roadworks and closures degrade road conditions.
-    # Keep deductions modest here — safety score already accounts for the main impact.
+    # Keep deductions modest here - safety score already accounts for the main impact.
     if traffic:
         closures = [e for e in traffic.items if e.type == "closure"]
         roadworks = [e for e in traffic.items if e.type == "roadworks"]
@@ -315,13 +315,13 @@ def _compute_conditions(
     if air_quality:
         if air_quality.overall_aqi >= 5:
             score -= 3
-            factors.append(f"Very poor air quality (AQI {air_quality.overall_aqi}) — avoid outdoor activities")
+            factors.append(f"Very poor air quality (AQI {air_quality.overall_aqi}) - avoid outdoor activities")
         elif air_quality.overall_aqi >= 4:
             score -= 2
-            factors.append(f"Poor air quality (AQI {air_quality.overall_aqi}) — reduce outdoor exertion")
+            factors.append(f"Poor air quality (AQI {air_quality.overall_aqi}) - reduce outdoor exertion")
         elif air_quality.overall_aqi >= 3:
             score -= 1
-            factors.append(f"Moderate air quality (AQI {air_quality.overall_aqi}) — sensitive groups affected")
+            factors.append(f"Moderate air quality (AQI {air_quality.overall_aqi}) - sensitive groups affected")
 
     # ── Cross-overlay synergy: combined conditions ──
 
@@ -330,7 +330,7 @@ def _compute_conditions(
     has_poor_aqi = air_quality and air_quality.overall_aqi >= 4
     if has_extreme_heat and has_poor_aqi:
         score -= 1.5
-        factors.append("Extreme heat combined with poor air quality — serious health risk")
+        factors.append("Extreme heat combined with poor air quality - serious health risk")
 
     # Heavy rain + flood gauges rising = road likely impassable
     has_heavy_rain = weather and any(
@@ -343,7 +343,7 @@ def _compute_conditions(
     )
     if has_heavy_rain and has_rising_flood:
         score -= 1.0
-        factors.append("Heavy rain forecast with rising flood gauges — road conditions may worsen rapidly")
+        factors.append("Heavy rain forecast with rising flood gauges - road conditions may worsen rapidly")
 
     score = max(0.0, score)
     return RouteScoreCategory(score=round(score, 1), label=_score_label(score), factors=factors)
@@ -365,13 +365,13 @@ def _compute_services(
         max_fuel_gap = _extract_max_fuel_gap_km(fuel)
         if max_fuel_gap > 300:
             score -= 4
-            factors.append(f"Fuel gap of {max_fuel_gap:.0f}km — very remote")
+            factors.append(f"Fuel gap of {max_fuel_gap:.0f}km - very remote")
         elif max_fuel_gap > 250:
             score -= 3
-            factors.append(f"Fuel gap of {max_fuel_gap:.0f}km — carry extra fuel")
+            factors.append(f"Fuel gap of {max_fuel_gap:.0f}km - carry extra fuel")
         elif max_fuel_gap > 200:
             score -= 2
-            factors.append(f"Fuel gap of {max_fuel_gap:.0f}km — plan fuel stops")
+            factors.append(f"Fuel gap of {max_fuel_gap:.0f}km - plan fuel stops")
         elif max_fuel_gap > 150:
             score -= 1
             factors.append(f"Fuel gap of {max_fuel_gap:.0f}km")
@@ -381,10 +381,10 @@ def _compute_services(
         max_rest_gap = _extract_max_rest_gap_km(rest)
         if max_rest_gap > 250:
             score -= 3
-            factors.append(f"Rest area gap of {max_rest_gap:.0f}km — fatigue risk")
+            factors.append(f"Rest area gap of {max_rest_gap:.0f}km - fatigue risk")
         elif max_rest_gap > 200:
             score -= 2
-            factors.append(f"Rest area gap of {max_rest_gap:.0f}km — plan rest stops")
+            factors.append(f"Rest area gap of {max_rest_gap:.0f}km - plan rest stops")
         elif max_rest_gap > 150:
             score -= 1
             factors.append(f"Rest area gap of {max_rest_gap:.0f}km")
@@ -426,7 +426,7 @@ def _compute_weather_comfort(weather: Optional[WeatherOverlay]) -> RouteScoreCat
         return RouteScoreCategory(
             score=5.0,
             label=_score_label(5.0),
-            factors=["No weather data available — score reflects uncertainty"],
+            factors=["No weather data available - score reflects uncertainty"],
         )
 
     pts = weather.points
@@ -481,9 +481,9 @@ def _compute_weather_comfort(weather: Optional[WeatherOverlay]) -> RouteScoreCat
     uv_pts = [p for p in pts if p.uv_index >= 8]
 
     if hot_pts:
-        factors.append(f"Hot conditions — up to {max(p.temperature_c for p in hot_pts):.0f}°C")
+        factors.append(f"Hot conditions - up to {max(p.temperature_c for p in hot_pts):.0f}°C")
     if cold_pts:
-        factors.append(f"Cold conditions — down to {min(p.temperature_c for p in cold_pts):.0f}°C")
+        factors.append(f"Cold conditions - down to {min(p.temperature_c for p in cold_pts):.0f}°C")
     if rainy_pts:
         factors.append(f"Rain likely at {len(rainy_pts)} of {len(pts)} route sections")
     if windy_pts:
@@ -547,7 +547,7 @@ class RouteScore:
     """
     Computes a composite Route Intelligence Score from all available overlays.
 
-    Instantiated per-request (same pattern as other services — no shared state).
+    Instantiated per-request (same pattern as other services - no shared state).
     All overlay parameters are optional; missing overlays are excluded from
     scoring with a data_warning added to the result.
     """
@@ -570,21 +570,21 @@ class RouteScore:
 
         # Track which overlays are missing and note them
         if traffic is None:
-            data_warnings.append("Traffic data unavailable — safety score may be incomplete")
+            data_warnings.append("Traffic data unavailable - safety score may be incomplete")
         if hazards is None:
-            data_warnings.append("Hazards data unavailable — safety score may be incomplete")
+            data_warnings.append("Hazards data unavailable - safety score may be incomplete")
         if flood is None:
-            data_warnings.append("Flood data unavailable — score may be incomplete")
+            data_warnings.append("Flood data unavailable - score may be incomplete")
         if weather is None:
-            data_warnings.append("Weather data unavailable — conditions score may be incomplete")
+            data_warnings.append("Weather data unavailable - conditions score may be incomplete")
         if fuel is None:
-            data_warnings.append("Fuel data unavailable — services score may be incomplete")
+            data_warnings.append("Fuel data unavailable - services score may be incomplete")
         if rest is None:
-            data_warnings.append("Rest area data unavailable — services score may be incomplete")
+            data_warnings.append("Rest area data unavailable - services score may be incomplete")
         if coverage is None:
-            data_warnings.append("Coverage data unavailable — safety score may be incomplete")
+            data_warnings.append("Coverage data unavailable - safety score may be incomplete")
         if wildlife is None:
-            data_warnings.append("Wildlife data unavailable — safety score may be incomplete")
+            data_warnings.append("Wildlife data unavailable - safety score may be incomplete")
 
         safety_cat = _compute_safety(traffic, hazards, flood, coverage, wildlife, bushfire, weather)
         conditions_cat = _compute_conditions(weather, flood, traffic, air_quality)

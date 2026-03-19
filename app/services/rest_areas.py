@@ -122,7 +122,7 @@ def _rest_key(polyline6: str, sample_interval_km: float, buffer_km: float, algo_
 
 
 # ──────────────────────────────────────────────────────────────
-# Overpass HTTP client — delegates to global gate
+# Overpass HTTP client - delegates to global gate
 # ──────────────────────────────────────────────────────────────
 
 
@@ -147,10 +147,10 @@ def _build_overpass_query(
     min_lat: float, min_lng: float, max_lat: float, max_lng: float,
 ) -> str:
     bbox = f"{min_lat},{min_lng},{max_lat},{max_lng}"
-    # Lean query — only node+way for actual rest areas / services.
+    # Lean query - only node+way for actual rest areas / services.
     # Camp/caravan sites use node-only (way queries are expensive and
     # `out center` gives us the centroid anyway).
-    # Removed regex toilet filters ("highway"~".*") — they cause full
+    # Removed regex toilet filters ("highway"~".*") - they cause full
     # tag scans across every toilet node in the bbox and are very slow.
     filters = [
         f'node["highway"="rest_area"]({bbox});',
@@ -480,7 +480,7 @@ async def _fetch_qld_rest_areas(client: httpx.AsyncClient) -> List[RestArea]:
 async def _fetch_wa_rest_areas(client: httpx.AsyncClient) -> List[RestArea]:
     """Fetch ALL WA government rest areas state-wide (cached in memory).
 
-    The host may block non-AU IPs — any request failure is silently skipped.
+    The host may block non-AU IPs - any request failure is silently skipped.
     """
     cached = _gov_cache_get("wa")
     if cached is not None:
@@ -501,11 +501,11 @@ async def _fetch_wa_rest_areas(client: httpx.AsyncClient) -> List[RestArea]:
         try:
             r = await client.get(url, params=params, timeout=_GOV_TIMEOUT)
             if not r.is_success:
-                logger.warning("rest_areas: WA tier=%s returned HTTP %d — skipping", tier, r.status_code)
+                logger.warning("rest_areas: WA tier=%s returned HTTP %d - skipping", tier, r.status_code)
                 return tier, []
             return tier, r.json().get("features") or []
         except Exception as exc:
-            logger.warning("rest_areas: WA tier=%s connection error — skipping: %r", tier, exc)
+            logger.warning("rest_areas: WA tier=%s connection error - skipping: %r", tier, exc)
             return tier, []
 
     tier_results = await asyncio.gather(
@@ -564,7 +564,7 @@ async def _fetch_wa_rest_areas(client: httpx.AsyncClient) -> List[RestArea]:
             )
             # Stash truck_friendly in a way visible to callers without changing the contract
             if truck_friendly:
-                area.source = "wa_gov_hv"  # heavy vehicle tier — truck_friendly implied
+                area.source = "wa_gov_hv"  # heavy vehicle tier - truck_friendly implied
             areas.append(area)
 
     total_feats = sum(len(f) for f in tier_features.values())
@@ -742,7 +742,7 @@ def _analyse_fatigue(
                 type="suggested_rest",
                 message=(
                     f"Suggested rest stop at {next_rest_km:.0f}km"
-                    + (f" — {best.name}" if best and best.name else "")
+                    + (f" - {best.name}" if best and best.name else "")
                 ),
                 km_from=next_rest_km,
                 km_to=None,
@@ -756,7 +756,7 @@ def _analyse_fatigue(
 
 
 # ──────────────────────────────────────────────────────────────
-# Places-store bridge — avoids duplicate Overpass calls
+# Places-store bridge - avoids duplicate Overpass calls
 # ──────────────────────────────────────────────────────────────
 
 _REST_CATEGORIES = ("rest_area", "camp", "toilet")

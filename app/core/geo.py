@@ -105,7 +105,7 @@ class RouteGrid:
                     if d < 0.05:
                         return best_dist, best_km
         if best_dist == float("inf"):
-            # Query point is far from any cell — fall back to brute force
+            # Query point is far from any cell - fall back to brute force
             for i, s in enumerate(samples):
                 d = haversine_km(pt, (s[0], s[1]))
                 if d < best_dist:
@@ -118,7 +118,7 @@ class RouteGrid:
         return self.nearest(lat, lng)[0]
 
     def dist_and_km(self, lat: float, lng: float) -> Tuple[float, float]:
-        """Return (distance_km, km_along) — compat with min_dist_to_route_with_km."""
+        """Return (distance_km, km_along) - compat with min_dist_to_route_with_km."""
         d, km = self.nearest(lat, lng)
         return d, km or 0.0
 

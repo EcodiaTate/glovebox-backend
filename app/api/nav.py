@@ -326,7 +326,7 @@ async def route_score(
     if not req.departure_iso:
         bad_request("bad_score_request", "departure_iso required")
 
-    # Fetch all overlays concurrently — failures are caught individually
+    # Fetch all overlays concurrently - failures are caught individually
     results = await asyncio.gather(
         traffic.poll(bbox=req.bbox),
         hazards.poll(bbox=req.bbox),

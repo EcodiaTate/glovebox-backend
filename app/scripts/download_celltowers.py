@@ -61,7 +61,7 @@ if __name__ == "__main__":
     from app.core.settings import settings
 
     if not settings.opencellid_token:
-        logger.error("OPENCELLID_TOKEN is not set in .env — aborting")
+        logger.error("OPENCELLID_TOKEN is not set in .env - aborting")
         sys.exit(1)
 
     dest = Path(settings.opencellid_local_db_path)

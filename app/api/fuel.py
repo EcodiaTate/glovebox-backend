@@ -2,8 +2,8 @@
 """
 Fuel overlay endpoints.
 
-  POST /nav/fuel/poll          — Fuel stations + EV chargers in a bbox
-  POST /nav/fuel/along-route   — Fuel along a route corridor (with gap warnings)
+  POST /nav/fuel/poll          - Fuel stations + EV chargers in a bbox
+  POST /nav/fuel/along-route   - Fuel along a route corridor (with gap warnings)
 """
 from __future__ import annotations
 

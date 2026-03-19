@@ -318,7 +318,7 @@ class Roadkill:
                 polyline6=polyline6,
                 algo_version=_ALGO_VERSION,
                 created_at=utc_now_iso(),
-                warnings=["Route does not pass through NSW — roadkill data not available outside NSW."],
+                warnings=["Route does not pass through NSW - roadkill data not available outside NSW."],
             )
             put_roadkill_pack(self.conn, roadkill_key=roadkill_key, created_at=overlay.created_at, algo_version=_ALGO_VERSION, pack=overlay.model_dump())
             return overlay

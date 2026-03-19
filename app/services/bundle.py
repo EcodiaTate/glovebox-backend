@@ -144,7 +144,7 @@ class Bundle:
         roadkill_key: str | None = None,
         roadkill_ready: bool = False,
     ) -> OfflineBundleManifest:
-        # Build key map for bulk byte-size query — only include ready overlays.
+        # Build key map for bulk byte-size query - only include ready overlays.
         ready_flags = {
             "corridor": corridor_ready, "places": places_ready,
             "traffic": traffic_ready, "hazards": hazards_ready,
@@ -275,7 +275,7 @@ class Bundle:
             if pack_type == "corridor":
                 continue
             if key and not raw_blobs.get(pack_type):
-                logger.warning("%s cache miss for key %s — omitting from ZIP", pack_type, key)
+                logger.warning("%s cache miss for key %s - omitting from ZIP", pack_type, key)
 
         # compresslevel=1 is fastest DEFLATE (Zlib level 1: speed >> size).
         # JSON compresses well at any level; level 1 is ~3-5× faster than default 6.

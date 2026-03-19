@@ -279,7 +279,7 @@ class Routing:
             return r.json()
 
         # OSRM returns 400 for client-routable failures like NoRoute / NoSegment.
-        # These are not server errors — they mean the graph can't connect the points.
+        # These are not server errors - they mean the graph can't connect the points.
         if r.status_code == 400:
             try:
                 body = r.json()
@@ -392,7 +392,7 @@ class Routing:
 
         # 2) If NoRoute and we have avoid zones, try routing via detour waypoints
         if data is None and has_avoid:
-            logger.info("NoRoute with avoid zones — attempting detour waypoints")
+            logger.info("NoRoute with avoid zones - attempting detour waypoints")
             detour_wps = self._detour_waypoints(
                 req.stops[0], req.stops[-1], req.avoid_zones,
             )
@@ -407,16 +407,16 @@ class Routing:
 
         # 3) If still no route, fall back to routing without avoid zones
         if data is None and has_avoid:
-            logger.info("Detour failed — falling back to direct route (no avoidance)")
+            logger.info("Detour failed - falling back to direct route (no avoidance)")
             data = self._call_osrm(req.stops, alternatives=0)
             if data is not None:
                 warnings.append(
                     "Could not find a route avoiding all hazard zones. "
-                    "This route may pass through warned areas — check "
+                    "This route may pass through warned areas - check "
                     "conditions before travelling."
                 )
 
-        # 4) Still nothing — hard fail
+        # 4) Still nothing - hard fail
         if data is None:
             service_unavailable(
                 "osrm_no_route",
@@ -454,7 +454,7 @@ class Routing:
                 distance_penalty = max(0, (dist_ratio - 1.0) * 200)
 
                 # Combined score: lower is better
-                # Hazard score heavily weighted — safety over speed
+                # Hazard score heavily weighted - safety over speed
                 total = hazard_score + distance_penalty
                 scored.append((total, idx, c))
 

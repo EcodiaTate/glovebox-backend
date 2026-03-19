@@ -124,7 +124,7 @@ def load_csv_into_db(conn: sqlite3.Connection, gz_bytes: bytes) -> int:
             except (KeyError, ValueError):
                 continue
 
-            # Basic sanity check — Australia bounding box
+            # Basic sanity check - Australia bounding box
             if not (-44.0 <= lat <= -10.0 and 112.0 <= lon <= 155.0):
                 continue
 
@@ -211,7 +211,7 @@ if __name__ == "__main__":
         count = run_import(conn, local_path=local_path)
     else:
         if not settings.opencellid_token:
-            logger.error("OPENCELLID_TOKEN is not set and no local CSV found — aborting")
+            logger.error("OPENCELLID_TOKEN is not set and no local CSV found - aborting")
             sys.exit(1)
         logger.info("[celltowers] No local file found, downloading from API …")
         count = run_import(

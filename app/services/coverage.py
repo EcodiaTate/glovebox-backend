@@ -11,10 +11,10 @@ Actual coverage depends on terrain, vegetation, atmospheric conditions, and
 device capability. Always download offline maps before entering remote areas.
 
 Signal classification per point per carrier:
-  reliable_4g  — LTE tower within its nominal range
-  voice_only   — GSM/UMTS tower within range but no LTE nearby
-  weak         — Any tower exists but beyond its nominal range (up to 30 km)
-  no_coverage  — No tower within 30 km
+  reliable_4g  - LTE tower within its nominal range
+  voice_only   - GSM/UMTS tower within range but no LTE nearby
+  weak         - Any tower exists but beyond its nominal range (up to 30 km)
+  no_coverage  - No tower within 30 km
 
 Algorithm:
   1. Sample every 5 km along the route (coverage changes rapidly in the outback).
@@ -89,9 +89,9 @@ def _classify_tower(dist_km: float, range_m: int, radio: str) -> CoverageLevel:
     """
     Classify coverage quality given a tower at dist_km away.
 
-    reliable_4g  — LTE/NR tower within its nominal range
-    voice_only   — GSM/UMTS within range, or LTE/NR just outside (likely fringe 4G)
-    weak         — any tower within SEARCH_RADIUS_KM but beyond nominal range
+    reliable_4g  - LTE/NR tower within its nominal range
+    voice_only   - GSM/UMTS within range, or LTE/NR just outside (likely fringe 4G)
+    weak         - any tower within SEARCH_RADIUS_KM but beyond nominal range
     """
     range_km = range_m / 1000.0 if range_m > 0 else 5.0   # default 5 km if range unknown
     within_range = dist_km <= range_km
@@ -266,11 +266,11 @@ class Coverage:
                 local_path = settings.opencellid_local_db_path
                 if not local_path or not __import__("pathlib").Path(local_path).exists():
                     warnings.append(
-                        "Local cell tower CSV not found — coverage data unavailable. "
+                        "Local cell tower CSV not found - coverage data unavailable. "
                         "Run the download_celltowers script to fetch the OpenCelliD data."
                     )
                     return warnings
-                logger.info("[coverage] Cell tower data is missing or stale — importing from local file …")
+                logger.info("[coverage] Cell tower data is missing or stale - importing from local file …")
                 count = run_import(
                     self.conn,
                     local_path=local_path,
@@ -315,7 +315,7 @@ class Coverage:
             },
         )
 
-        # Cache hit — only serve from cache when the tower table has data, so a
+        # Cache hit - only serve from cache when the tower table has data, so a
         # previously-cached all-no-coverage result (generated before the token was
         # configured) isn't served indefinitely.
         towers_present = self.conn.execute("SELECT COUNT(*) FROM cell_towers").fetchone()[0] > 0
@@ -337,7 +337,7 @@ class Coverage:
 
         # If the import step added warnings, re-check whether the tower table now
         # has data (a successful import would have filled it).  If still empty we
-        # can't produce meaningful coverage — return an overlay with no points so
+        # can't produce meaningful coverage - return an overlay with no points so
         # the UI treats this as data-unavailable rather than "whole route has no
         # signal".
         if import_warnings:

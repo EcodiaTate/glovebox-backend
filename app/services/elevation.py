@@ -118,7 +118,7 @@ class Elevation:
     Primary: OpenTopography SRTM30M API (requires OPENTOPOGRAPHY_API_KEY).
     Fallback: Open-Elevation public API (no key, less reliable).
 
-    If neither succeeds, returns zeroed elevations rather than raising —
+    If neither succeeds, returns zeroed elevations rather than raising -
     callers can still build fuel/grade summaries; they just won't be accurate.
     """
 
@@ -182,7 +182,7 @@ class Elevation:
 
         Tries OpenTopography SRTM30M first (if key present), falls back to
         Open-Elevation. Returns 0.0 for any point that can't be resolved
-        rather than raising — callers degrade gracefully.
+        rather than raising - callers degrade gracefully.
         """
         if self._api_key:
             try:
@@ -198,7 +198,7 @@ class Elevation:
 
     def _fetch_opentopography(self, latlngs: List[Tuple[float, float]]) -> List[float]:
         """
-        OpenTopography globaldem API — SRTM30M (1 arc-second, ~30m).
+        OpenTopography globaldem API - SRTM30M (1 arc-second, ~30m).
 
         The API returns a GeoTIFF raster for a bbox; we use the point-query
         form by sending the exact coordinates and parsing the JSON response.
@@ -242,7 +242,7 @@ class Elevation:
         return all_elevations
 
     def _fetch_open_elevation(self, latlngs: List[Tuple[float, float]]) -> List[float]:
-        """Open-Elevation public API — no key required, batched POST with retry."""
+        """Open-Elevation public API - no key required, batched POST with retry."""
         import time as _time
 
         all_elevations: List[float] = []
@@ -254,7 +254,7 @@ class Elevation:
                 for lat, lng in batch
             ]
 
-            # Retry up to 3 times with exponential backoff — the public
+            # Retry up to 3 times with exponential backoff - the public
             # Open-Elevation API frequently returns 504s under load.
             last_err: Optional[Exception] = None
             for attempt in range(3):

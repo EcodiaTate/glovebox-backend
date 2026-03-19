@@ -233,7 +233,7 @@ async def _handle_revenuecat_webhook(request: Request) -> JSONResponse:
     import re
     uuid_pattern = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE)
     if not uuid_pattern.match(rc_user_id):
-        logger.warning("[rc/webhook] app_user_id is not a UUID — skipping: %s", rc_user_id)
+        logger.warning("[rc/webhook] app_user_id is not a UUID - skipping: %s", rc_user_id)
         return JSONResponse({"received": True})
 
     await _upsert_entitlement(rc_user_id, "revenuecat", rc_app_user_id=rc_user_id)

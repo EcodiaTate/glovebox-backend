@@ -13,6 +13,7 @@ from app.core.contracts import (
     PlacesSuggestResponse,
     StopSuggestionsRequest,
     StopSuggestionsResponse,
+    density_budget_multiplier,
 )
 from app.core.errors import bad_request, not_found
 from app.services.places import Places
@@ -143,24 +144,27 @@ def places_corridor(
     geometry = req.geometry
     buffer_km = req.buffer_km or 35.0
 
-    # ── Dynamic limit based on route extent ──────────────────
+    # ── Dynamic limit based on route extent + density ───────
     extent_km = 0.0
+    _density_mult = density_budget_multiplier(req.stop_density)
     if req.limit:
-        limit = int(req.limit)
+        limit = int(max(1, int(req.limit) * _density_mult))
     elif geometry and len(geometry) > 10:
         from app.services.places import _corridor_places_budget, _route_extent_km
         extent_km = _route_extent_km(geometry)
-        limit = _corridor_places_budget(extent_km)
+        limit = int(max(1, _corridor_places_budget(extent_km) * _density_mult))
     else:
-        limit = 2000  # fallback for bbox-only requests
+        limit = int(max(1, 2000 * _density_mult))  # fallback for bbox-only requests
 
     logger.info(
-        "places_corridor: corridor_key=%s geometry=%s buffer_km=%s extent_km=%.0f limit=%d",
+        "places_corridor: corridor_key=%s geometry=%s buffer_km=%s extent_km=%.0f limit=%d density=%d mult=%.2f",
         req.corridor_key[:16] if req.corridor_key else "?",
         f"polyline6[{len(geometry)}]" if geometry else "NONE",
         buffer_km,
         extent_km,
         limit,
+        req.stop_density,
+        _density_mult,
     )
 
     # ── Preferred path: route geometry provided ──────────────
@@ -201,13 +205,15 @@ def places_suggest(
     places: Places = Depends(get_places_service),
 ) -> PlacesSuggestResponse:
     cats = req.categories or _SUGGEST_DEFAULT_CATS
+    _density_mult = density_budget_multiplier(req.stop_density)
+    _scaled_limit = int(max(1, (req.limit_per_sample or 150) * _density_mult))
     try:
         clusters = places.suggest_along_route(
             polyline6=req.geometry,
             interval_km=int(req.interval_km or 50),
             radius_m=int(req.radius_m or 15000),
             categories=cats,
-            limit_per_sample=int(req.limit_per_sample or 150),
+            limit_per_sample=_scaled_limit,
         )
     except ValueError as exc:
         bad_request("invalid_geometry", str(exc))

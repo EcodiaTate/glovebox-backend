@@ -6,7 +6,7 @@
 #
 # Supabase now uses ECC P-256 (ES256) signing keys by default.
 # The JWKS client fetches the public key and PyJWT handles the algorithm
-# automatically from the key type — we just allowlist all Supabase-issued algs.
+# automatically from the key type - we just allowlist all Supabase-issued algs.
 
 from __future__ import annotations
 
@@ -53,12 +53,12 @@ def _get_jwks_client() -> jwt.PyJWKClient:
 
 
 # Algorithms Supabase may use: ES256 (current P-256 keys), RS256 (legacy RSA),
-# HS256 (legacy shared secret — still verifies old unexpired tokens).
+# HS256 (legacy shared secret - still verifies old unexpired tokens).
 _SUPABASE_ALGORITHMS = ["ES256", "RS256", "HS256"]
 
 
 def get_current_user(request: Request) -> AuthUser:
-    """FastAPI dependency — extracts and validates the Supabase JWT."""
+    """FastAPI dependency - extracts and validates the Supabase JWT."""
     token = _get_token(request)
 
     try:
@@ -84,7 +84,7 @@ def get_current_user(request: Request) -> AuthUser:
 
 
 def get_optional_user(request: Request) -> Optional[AuthUser]:
-    """FastAPI dependency — returns AuthUser if a valid token is present, else None."""
+    """FastAPI dependency - returns AuthUser if a valid token is present, else None."""
     auth = request.headers.get("Authorization", "")
     if not auth.startswith("Bearer "):
         return None

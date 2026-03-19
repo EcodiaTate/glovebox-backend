@@ -2,7 +2,7 @@
 """
 Wildlife hazard overlay endpoints.
 
-  POST /nav/wildlife/along-route  — Wildlife collision risk along a route corridor
+  POST /nav/wildlife/along-route  - Wildlife collision risk along a route corridor
 """
 from __future__ import annotations
 

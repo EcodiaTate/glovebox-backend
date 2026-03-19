@@ -32,7 +32,7 @@ _DEFAULT_LIMITS = httpx.Limits(
     keepalive_expiry=30.0,
 )
 
-# Module-level shared transport — created once, reused across requests.
+# Module-level shared transport - created once, reused across requests.
 # AsyncHTTPTransport is thread-safe and async-safe.
 _shared_transport: httpx.AsyncHTTPTransport | None = None
 

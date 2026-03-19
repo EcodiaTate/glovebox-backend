@@ -144,7 +144,7 @@ class Corridor:
             "overview": "false",       # We don't need the geometry
             "geometries": "polyline6",
             "steps": "false",          # We don't need steps
-            "annotations": "nodes",    # THIS is the key — gives us OSM node IDs
+            "annotations": "nodes",    # THIS is the key - gives us OSM node IDs
             "alternatives": str(alternatives) if alternatives > 0 else "false",
         }
 
@@ -203,7 +203,7 @@ class Corridor:
 
         # ── Tree routing strategy ─────────────────────────────────────
         # 1. Get OSM node IDs from the main route spine
-        # 2. Parallel /nearest snap for all unique stops — skip those
+        # 2. Parallel /nearest snap for all unique stops - skip those
         #    already on the spine
         # 3. Parallel /route for remaining stops (spine→stop)
         # 4. Query edges DB by collected node IDs
@@ -224,7 +224,7 @@ class Corridor:
             end_lat, end_lng = spine_full[-1]
 
             # Deduplicate: group stops by nearest spine point on a ~1km grid.
-            # Keep only the furthest stop per grid cell — its OSRM route
+            # Keep only the furthest stop per grid cell - its OSRM route
             # covers the roads for closer stops too.
             stop_routes: Dict[Tuple[float, float], Tuple[float, float, float]] = {}
             if stop_coords:
@@ -247,7 +247,7 @@ class Corridor:
 
             # 30 workers: OSRM Cloud Run has concurrency=320 on 4 vCPU.
             # Same-region latency is ~5ms, so 30 concurrent requests ≈ 150ms
-            # of CPU time per batch — well within capacity.
+            # of CPU time per batch - well within capacity.
             max_workers = 30
 
             with httpx.Client(

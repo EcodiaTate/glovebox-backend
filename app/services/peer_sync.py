@@ -40,7 +40,7 @@ class PeerSync:
         """
         now = utc_now_iso()
 
-        # 1. User observations (always included — these are the core peer value)
+        # 1. User observations (always included - these are the core peer value)
         obs_since = overlay_timestamps.get("observations")
         obs_rows = get_nearby_observations(
             self.conn,
@@ -71,7 +71,7 @@ class PeerSync:
         )
 
     def _aggregate_observations(self, rows: List[dict]) -> List[AggregatedObservation]:
-        """Simple aggregation — group by type+proximity would be ideal but
+        """Simple aggregation - group by type+proximity would be ideal but
         for peer sync we send individual observations as single-report aggregates."""
         results = []
         for r in rows:

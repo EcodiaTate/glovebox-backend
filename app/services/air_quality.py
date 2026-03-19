@@ -15,7 +15,7 @@ Algorithm
 4. Limit concurrency with asyncio.Semaphore(5).
 5. Map AQI 1-5 to descriptive labels + health advice.
 6. Overall route AQI = worst (max) segment AQI.
-7. Cache result in aqi_packs for 3600s (1 hour) — air quality changes frequently.
+7. Cache result in aqi_packs for 3600s (1 hour) - air quality changes frequently.
 """
 from __future__ import annotations
 
@@ -56,7 +56,7 @@ _AQI_ADVICE = {
     2: "Acceptable; sensitive groups may notice effects",
     3: "Sensitive groups should reduce outdoor exertion",
     4: "Everyone should reduce outdoor exertion",
-    5: "Health alert — avoid outdoor activities",
+    5: "Health alert - avoid outdoor activities",
 }
 
 # ══════════════════════════════════════════════════════════════
@@ -161,7 +161,7 @@ class AirQuality:
                 polyline6=polyline6,
                 algo_version=algo_version,
                 created_at=utc_now_iso(),
-                warnings=["OWM_API_KEY not configured — air quality unavailable."],
+                warnings=["OWM_API_KEY not configured - air quality unavailable."],
             )
 
         # Cache key

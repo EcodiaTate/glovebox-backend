@@ -2,7 +2,7 @@
 """
 School zone overlay service for Roam.
 
-Data source: Transport for NSW — School Zone Timetables (CC BY 3.0 AU, no auth)
+Data source: Transport for NSW - School Zone Timetables (CC BY 3.0 AU, no auth)
   Sites ArcGIS FeatureServer:
     https://portal.data.nsw.gov.au/arcgis/rest/services/Hosted/TFNSW_School_Zone_Sites_public/FeatureServer/0/query
   Timetable CSV (static):
@@ -24,7 +24,7 @@ Active-hours logic:
   - Afternoon: 14:30–16:00 AEST/AEDT
   - Speed limit during active hours: 40 km/h
   - Outside active hours: normal posted speed limit applies
-  - We do not attempt to model NSW public holiday calendars — we flag
+  - We do not attempt to model NSW public holiday calendars - we flag
     weekends definitively as inactive, weekdays as "check active hours".
 """
 from __future__ import annotations
@@ -78,7 +78,7 @@ def _check_active_now() -> Tuple[bool, Optional[str]]:
     """
     Returns (is_active, session_name) based on current Sydney time.
     Weekends are never active. Weekday active windows: 08:00-09:30, 14:30-16:00.
-    NSW public holidays are NOT modelled — weekdays return True during windows.
+    NSW public holidays are NOT modelled - weekdays return True during windows.
     """
     now_sydney = datetime.now(tz=_NSW_TZ)
     # 0=Monday, 6=Sunday
@@ -266,7 +266,7 @@ class SchoolZones:
         min_lat, min_lng, max_lat, max_lng = bbox_from_coords(coords, buffer_km)
         warnings: List[str] = []
 
-        # NSW-only data source — skip fetch for routes entirely outside NSW
+        # NSW-only data source - skip fetch for routes entirely outside NSW
         _NSW_LAT_MIN, _NSW_LAT_MAX = -37.6, -27.5
         _NSW_LNG_MIN, _NSW_LNG_MAX = 140.5, 154.0
         if max_lat < _NSW_LAT_MIN or min_lat > _NSW_LAT_MAX or max_lng < _NSW_LNG_MIN or min_lng > _NSW_LNG_MAX:
@@ -275,7 +275,7 @@ class SchoolZones:
                 polyline6=polyline6,
                 algo_version=_ALGO_VERSION,
                 created_at=utc_now_iso(),
-                warnings=["Route does not pass through NSW — school zone data not available outside NSW."],
+                warnings=["Route does not pass through NSW - school zone data not available outside NSW."],
             )
             put_school_zones_pack(self.conn, school_zones_key=zones_key, created_at=overlay.created_at, algo_version=_ALGO_VERSION, pack=overlay.model_dump())
             return overlay

@@ -66,7 +66,7 @@ _ATTRIBUTION = "© Commonwealth of Australia (Department of Health)"
 # ══════════════════════════════════════════════════════════════
 
 def _truthy(v: Any) -> bool:
-    """ArcGIS returns 1/0, "Y"/"N", True/False — normalise to bool."""
+    """ArcGIS returns 1/0, "Y"/"N", True/False - normalise to bool."""
     if v is None:
         return False
     if isinstance(v, bool):

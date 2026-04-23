@@ -100,8 +100,19 @@ def _feature_to_item(feat: dict[str, Any]) -> PlaceItem | None:
 
     lng, lat = float(center[0]), float(center[1])
     mapbox_id = feat.get("id", "")
-    name = feat.get("text") or feat.get("place_name") or ""
     place_name = feat.get("place_name") or ""
+    props = feat.get("properties") or {}
+    place_types = feat.get("place_type") or []
+
+    # For address features Mapbox puts the street name in `text` and the
+    # house/unit number in `properties.address` - stitch them so the primary
+    # label is "123 Elizabeth Street" rather than just "Elizabeth Street".
+    text = feat.get("text") or place_name or ""
+    house_number = str(props.get("address") or "").strip()
+    if "address" in place_types and house_number:
+        name = f"{house_number} {text}".strip()
+    else:
+        name = text
 
     # Build a short address from context (suburb, city, state)
     context = feat.get("context") or []
@@ -113,8 +124,6 @@ def _feature_to_item(feat: dict[str, Any]) -> PlaceItem | None:
     address = ", ".join(context_parts[:3]) if context_parts else ""
 
     category = _classify(feat)
-
-    props = feat.get("properties") or {}
 
     return PlaceItem(
         id=f"mapbox:{mapbox_id}",
@@ -153,7 +162,10 @@ def _make_places_key(query: str, proximity: tuple[float, float] | None, limit: i
 # ── Allowed Mapbox place types ──────────────────────────────────────────
 # We include all useful types. Omitting "country" and "postcode" because
 # those are rarely what a user typing "Servo near Toowoomba" wants.
-_DEFAULT_TYPES = "poi,poi.landmark,address,place,locality,neighborhood,district,region"
+# Order matters: Mapbox uses it as a tiebreaker when relevance is equal,
+# so putting `address` first means "123 Elizabeth St" outranks a generic
+# "Elizabeth Street" POI when the query contains a house number.
+_DEFAULT_TYPES = "address,poi,poi.landmark,place,locality,neighborhood,district,region"
 
 
 class MapboxGeocoding:

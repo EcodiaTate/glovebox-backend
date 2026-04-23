@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     # Versioning
     algo_version: str = Field(default="navpack.v1.osrm.mld", alias="ALGO_VERSION")
     corridor_algo_version: str = Field(default="corridor.v16.tree", alias="CORRIDOR_ALGO_VERSION")
-    places_algo_version: str = Field(default="places.v2.overpass.enriched", alias="PLACES_ALGO_VERSION")
+    places_algo_version: str = Field(default="places.v3.address.house_number", alias="PLACES_ALGO_VERSION")
 
     # Corridor defaults
     corridor_buffer_m_default: int = Field(default=5000, alias="CORRIDOR_BUFFER_M_DEFAULT")

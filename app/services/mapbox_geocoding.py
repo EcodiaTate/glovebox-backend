@@ -107,9 +107,24 @@ def _feature_to_item(feat: dict[str, Any]) -> PlaceItem | None:
     # For address features Mapbox puts the street name in `text` and the
     # house/unit number in `properties.address` - stitch them so the primary
     # label is "123 Elizabeth Street" rather than just "Elizabeth Street".
+    #
+    # Fallback: some Mapbox v5 responses omit `properties.address` but still
+    # embed the house number as the leading token of `place_name` (e.g.
+    # "123 Elizabeth St, Brisbane QLD 4000"). Parse that so we don't lose
+    # granularity on those responses.
     text = feat.get("text") or place_name or ""
     house_number = str(props.get("address") or "").strip()
-    if "address" in place_types and house_number:
+    is_address = "address" in place_types
+    if not house_number and is_address and place_name:
+        first_token = place_name.split(",", 1)[0].split(" ", 1)[0].strip()
+        # Must start with digit; accept "12", "12A", "3-5", "1/220", etc.
+        if first_token and first_token[0].isdigit():
+            # Only treat as a house number if the first token is NOT already
+            # part of `text` (avoids stripping a street number back off a
+            # street like "21st Street").
+            if not text.lstrip().startswith(first_token):
+                house_number = first_token
+    if is_address and house_number:
         name = f"{house_number} {text}".strip()
     else:
         name = text

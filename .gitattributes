@@ -1,0 +1,6 @@
+# Shell scripts MUST stay LF - a CRLF entrypoint.sh makes the Linux container
+# try to exec "/bin/sh\r" and fail to start ("Application exec likely failed",
+# no Python output). core.autocrlf=true on Windows checkouts reintroduces CRLF
+# without this. Pin all shell scripts (and the entrypoint specifically) to LF.
+*.sh text eol=lf
+entrypoint.sh text eol=lf

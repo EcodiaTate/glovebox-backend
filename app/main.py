@@ -101,7 +101,7 @@ async def lifespan(app: FastAPI):
 # App factory
 # ──────────────────────────────────────────────────────────────
 
-app = FastAPI(title="Roam Backend", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="Glovebox Backend", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -116,9 +116,10 @@ app.add_middleware(
         "http://localhost:3001",
         "http://www.localhost:3001",
         "http://127.0.0.1:3001",
-        # Production - prod actually serves at nav.ecodia.au (roam.ecodia.au
-        # 307s to it). Keep the alias listed so a direct hit at the old
-        # host still works while DNS users transition.
+        # Production - canonical host is now glovebox.ecodia.au. The legacy
+        # nav.ecodia.au and roam.ecodia.au aliases are kept so existing share
+        # links and bookmarks continue to work during the rebrand transition.
+        "https://glovebox.ecodia.au",
         "https://nav.ecodia.au",
         "https://roam.ecodia.au",
     ],

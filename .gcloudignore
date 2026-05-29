@@ -1,0 +1,20 @@
+# Keep secrets, VCS, and caches out of the Cloud Build upload.
+# The Dockerfile only COPYs requirements.txt, app/, entrypoint.sh, so this is
+# mostly to ensure .env (secrets) never leaves the box and to trim upload size.
+# NOTE: deliberately NOT excluding app/data/*.db - the Dockerfile re-COPYs app/,
+# so excluding them would change the image vs the current prod build. Prod uses
+# Postgres (EDGES_DATABASE_URL) but we keep image parity to be safe.
+.env
+.env.*
+.git
+.gitignore
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+scripts/_*.txt

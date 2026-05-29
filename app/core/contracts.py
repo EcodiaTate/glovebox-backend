@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 # Shared
 # ──────────────────────────────────────────────────────────────
 
+
 class NavCoord(BaseModel):
     lat: float
     lng: float
@@ -19,45 +20,89 @@ class TripStop(BaseModel):
     name: Optional[str] = None
     lat: float
     lng: float
-    arrive_at: Optional[str] = None   # ISO8601 local planned arrival
-    depart_at: Optional[str] = None   # ISO8601 local planned departure
+    arrive_at: Optional[str] = None  # ISO8601 local planned arrival
+    depart_at: Optional[str] = None  # ISO8601 local planned departure
 
 
 # High-level category groups - each maps to multiple PlaceCategory values
 CategoryGroup = Literal[
-    "essentials",     # fuel, ev_charging, rest_area, toilet, water, mechanic, hospital, pharmacy
-    "food",           # bakery, cafe, restaurant, fast_food, pub, bar
+    "essentials",  # fuel, ev_charging, rest_area, toilet, water, mechanic, hospital, pharmacy
+    "food",  # bakery, cafe, restaurant, fast_food, pub, bar
     "accommodation",  # camp, hotel, motel, hostel
-    "nature",         # viewpoint, waterfall, swimming_hole, beach, national_park, hiking, picnic, hot_spring, cave, fishing, surf
-    "culture",        # visitor_info, museum, gallery, heritage, winery, brewery, attraction, market, library, showground
-    "family",         # playground, pool, zoo, theme_park, dog_park, golf, cinema
-    "supplies",       # grocery, town, atm, laundromat, dump_point
+    "nature",  # viewpoint, waterfall, swimming_hole, beach, national_park, hiking, picnic, hot_spring, cave, fishing, surf
+    "culture",  # visitor_info, museum, gallery, heritage, winery, brewery, attraction, market, library, showground
+    "family",  # playground, pool, zoo, theme_park, dog_park, golf, cinema
+    "supplies",  # grocery, town, atm, laundromat, dump_point
 ]
 
 
 class TripPreferences(BaseModel):
     """User-facing trip preferences controlling enrichment."""
-    stop_density: int = Field(default=3, ge=1, le=5)   # 1=bare minimum, 5=everything
-    categories: Dict[str, bool] = Field(default_factory=lambda: {
-        "essentials": True,
-        "food": True,
-        "accommodation": True,
-        "nature": True,
-        "culture": True,
-        "family": True,
-        "supplies": True,
-    })
+
+    stop_density: int = Field(default=3, ge=1, le=5)  # 1=bare minimum, 5=everything
+    categories: Dict[str, bool] = Field(
+        default_factory=lambda: {
+            "essentials": True,
+            "food": True,
+            "accommodation": True,
+            "nature": True,
+            "culture": True,
+            "family": True,
+            "supplies": True,
+        }
+    )
 
 
 # Maps CategoryGroup → PlaceCategory values
 CATEGORY_GROUP_MAP: Dict[str, List[str]] = {
-    "essentials":     ["fuel", "ev_charging", "rest_area", "toilet", "water", "mechanic", "hospital", "pharmacy", "emergency_phone"],
-    "food":           ["bakery", "cafe", "restaurant", "fast_food", "pub", "bar"],
-    "accommodation":  ["camp", "hotel", "motel", "hostel"],
-    "nature":         ["viewpoint", "waterfall", "swimming_hole", "beach", "national_park", "hiking", "picnic", "hot_spring", "cave", "fishing", "surf"],
-    "culture":        ["visitor_info", "museum", "gallery", "heritage", "winery", "brewery", "attraction", "market", "library", "showground"],
-    "family":         ["playground", "pool", "zoo", "theme_park", "dog_park", "golf", "cinema"],
-    "supplies":       ["grocery", "town", "atm", "laundromat", "dump_point", "shower", "water_fill"],
+    "essentials": [
+        "fuel",
+        "ev_charging",
+        "rest_area",
+        "toilet",
+        "water",
+        "mechanic",
+        "hospital",
+        "pharmacy",
+        "emergency_phone",
+    ],
+    "food": ["bakery", "cafe", "restaurant", "fast_food", "pub", "bar"],
+    "accommodation": ["camp", "hotel", "motel", "hostel"],
+    "nature": [
+        "viewpoint",
+        "waterfall",
+        "swimming_hole",
+        "beach",
+        "national_park",
+        "hiking",
+        "picnic",
+        "hot_spring",
+        "cave",
+        "fishing",
+        "surf",
+    ],
+    "culture": [
+        "visitor_info",
+        "museum",
+        "gallery",
+        "heritage",
+        "winery",
+        "brewery",
+        "attraction",
+        "market",
+        "library",
+        "showground",
+    ],
+    "family": ["playground", "pool", "zoo", "theme_park", "dog_park", "golf", "cinema"],
+    "supplies": [
+        "grocery",
+        "town",
+        "atm",
+        "laundromat",
+        "dump_point",
+        "shower",
+        "water_fill",
+    ],
 }
 
 
@@ -100,37 +145,50 @@ class BBox4(BaseModel):
 # ──────────────────────────────────────────────────────────────
 
 ManeuverType = Literal[
-    "turn", "depart", "arrive",
-    "merge", "fork", "on ramp", "off ramp",
-    "roundabout", "rotary", "exit roundabout",
-    "new name", "continue", "end of road",
+    "turn",
+    "depart",
+    "arrive",
+    "merge",
+    "fork",
+    "on ramp",
+    "off ramp",
+    "roundabout",
+    "rotary",
+    "exit roundabout",
+    "new name",
+    "continue",
+    "end of road",
     "notification",
 ]
 
 ManeuverModifier = Literal[
-    "left", "right",
-    "slight left", "slight right",
-    "sharp left", "sharp right",
-    "straight", "uturn",
+    "left",
+    "right",
+    "slight left",
+    "slight right",
+    "sharp left",
+    "sharp right",
+    "straight",
+    "uturn",
 ]
 
 
 class NavManeuver(BaseModel):
     type: ManeuverType = "turn"
     modifier: Optional[ManeuverModifier] = None
-    location: List[float]           # [lng, lat] - OSRM convention
+    location: List[float]  # [lng, lat] - OSRM convention
     bearing_before: int = 0
     bearing_after: int = 0
-    exit: Optional[int] = None      # roundabout exit number
+    exit: Optional[int] = None  # roundabout exit number
 
 
 class NavStep(BaseModel):
     maneuver: NavManeuver
-    name: str                       # road name ("Bruce Highway", "")
-    ref: Optional[str] = None       # route reference ("M1", "A1")
+    name: str  # road name ("Bruce Highway", "")
+    ref: Optional[str] = None  # route reference ("M1", "A1")
     distance_m: float
     duration_s: float
-    geometry: str                   # polyline6 for this step's segment
+    geometry: str  # polyline6 for this step's segment
     mode: str = "driving"
     pronunciation: Optional[str] = None  # phonetic road name for TTS
 
@@ -139,8 +197,10 @@ class NavStep(BaseModel):
 # Navigation - Core route models
 # ──────────────────────────────────────────────────────────────
 
+
 class AvoidZoneRequest(BaseModel):
     """A circular zone the router should try to avoid."""
+
     lat: float
     lng: float
     radius_km: float = 5.0
@@ -161,7 +221,7 @@ class NavLeg(BaseModel):
     to_stop_id: Optional[str] = None
     distance_m: int
     duration_s: int
-    geometry: str                   # Polyline6 (this leg only)
+    geometry: str  # Polyline6 (this leg only)
     steps: List[NavStep] = Field(default_factory=list)
 
 
@@ -170,11 +230,11 @@ class NavRoute(BaseModel):
     profile: str
     distance_m: int
     duration_s: int
-    geometry: str                   # Polyline6 (full route)
+    geometry: str  # Polyline6 (full route)
     bbox: BBox4
     legs: List[NavLeg]
-    provider: str                   # "osrm"
-    created_at: str                 # ISO8601 UTC
+    provider: str  # "osrm"
+    created_at: str  # ISO8601 UTC
     algo_version: str
 
 
@@ -193,9 +253,10 @@ class NavPack(BaseModel):
 # Elevation profiles
 # ──────────────────────────────────────────────────────────────
 
+
 class ElevationRequest(BaseModel):
-    geometry: str                   # polyline6
-    sample_interval_m: int = 500    # sample every N metres
+    geometry: str  # polyline6
+    sample_interval_m: int = 500  # sample every N metres
     route_key: Optional[str] = None
 
 
@@ -218,16 +279,18 @@ class ElevationProfile(BaseModel):
 
 class GradeSegment(BaseModel):
     """Derived segment for elevation-aware fuel analysis."""
+
     from_km: float
     to_km: float
-    avg_grade_pct: float            # positive = uphill, negative = downhill
+    avg_grade_pct: float  # positive = uphill, negative = downhill
     elevation_change_m: float
-    fuel_penalty_factor: float      # 1.0 = flat, 1.35 = steep uphill, 0.85 = steep downhill
+    fuel_penalty_factor: float  # 1.0 = flat, 1.35 = steep uphill, 0.85 = steep downhill
 
 
 # ──────────────────────────────────────────────────────────────
 # Corridor graphs
 # ──────────────────────────────────────────────────────────────
+
 
 class CorridorGraphMeta(BaseModel):
     corridor_key: str
@@ -351,28 +414,71 @@ CorridorGraphMeta.model_rebuild()
 
 PlaceCategory = Literal[
     # Essentials & safety
-    "fuel", "ev_charging", "rest_area", "toilet", "water", "water_fill",
-    "dump_point", "shower", "mechanic", "hospital", "pharmacy",
+    "fuel",
+    "ev_charging",
+    "rest_area",
+    "toilet",
+    "water",
+    "water_fill",
+    "dump_point",
+    "shower",
+    "mechanic",
+    "hospital",
+    "pharmacy",
     "emergency_phone",
     # Supplies
-    "grocery", "town", "atm", "laundromat",
+    "grocery",
+    "town",
+    "atm",
+    "laundromat",
     # Food & drink
-    "bakery", "cafe", "restaurant", "fast_food", "pub", "bar",
+    "bakery",
+    "cafe",
+    "restaurant",
+    "fast_food",
+    "pub",
+    "bar",
     # Accommodation
-    "camp", "hotel", "motel", "hostel",
+    "camp",
+    "hotel",
+    "motel",
+    "hostel",
     # Nature & outdoors
-    "viewpoint", "waterfall", "swimming_hole", "beach",
-    "national_park", "hiking", "picnic", "hot_spring",
-    "cave", "fishing", "surf",
+    "viewpoint",
+    "waterfall",
+    "swimming_hole",
+    "beach",
+    "national_park",
+    "hiking",
+    "picnic",
+    "hot_spring",
+    "cave",
+    "fishing",
+    "surf",
     # Family & recreation
-    "playground", "pool", "zoo", "theme_park",
-    "dog_park", "golf", "cinema",
+    "playground",
+    "pool",
+    "zoo",
+    "theme_park",
+    "dog_park",
+    "golf",
+    "cinema",
     # Culture & sightseeing
-    "visitor_info", "museum", "gallery", "heritage",
-    "winery", "brewery", "attraction", "market", "park",
-    "library", "showground",
+    "visitor_info",
+    "museum",
+    "gallery",
+    "heritage",
+    "winery",
+    "brewery",
+    "attraction",
+    "market",
+    "park",
+    "library",
+    "showground",
     # Geocoding (Mapbox)
-    "address", "place", "region",
+    "address",
+    "place",
+    "region",
 ]
 
 
@@ -408,8 +514,8 @@ class CorridorPlacesRequest(BaseModel):
     categories: Optional[List[PlaceCategory]] = None
     limit: Optional[int] = None
     # Route polyline for true corridor search
-    geometry: Optional[str] = None          # Polyline6 of the route
-    buffer_km: Optional[float] = 35.0       # Corridor buffer radius in km
+    geometry: Optional[str] = None  # Polyline6 of the route
+    buffer_km: Optional[float] = 35.0  # Corridor buffer radius in km
     stop_density: int = Field(default=3, ge=1, le=5)  # 1=bare minimum, 5=everything
 
 
@@ -440,14 +546,16 @@ class StopSuggestionsRequest(BaseModel):
     Uses the trip bounding box for Overpass queries, then scores candidates
     by proximity to the route midpoint and category diversity vs existing stops.
     """
-    bbox: BBox4                                   # bounding box of the full route
-    midpoint: NavCoord                            # geographic midpoint of the route
+
+    bbox: BBox4  # bounding box of the full route
+    midpoint: NavCoord  # geographic midpoint of the route
     existing_categories: List[PlaceCategory] = Field(default_factory=list)
-    limit: int = 4                                # max suggestions to return
+    limit: int = 4  # max suggestions to return
 
 
 class StopSuggestionItem(BaseModel):
     """A single suggested place to add as a trip stop."""
+
     id: str
     name: str
     lat: float
@@ -476,6 +584,7 @@ class GuideMsg(BaseModel):
 
 class TripProgress(BaseModel):
     """Live position + progress telemetry sent from frontend."""
+
     user_lat: float
     user_lng: float
     user_accuracy_m: float = 0.0
@@ -501,6 +610,7 @@ class WirePlace(BaseModel):
     can recommend without a tool call.  Includes contact info for
     action buttons.
     """
+
     id: str
     name: str
     lat: float
@@ -516,15 +626,15 @@ class WirePlace(BaseModel):
     camp_type: Optional[str] = None
     free: Optional[bool] = None
     price_per_night_aud: Optional[float] = None
-    overnight_allowed: Optional[str] = None   # "true" | "false" | "check" | "prohibited"
+    overnight_allowed: Optional[str] = None  # "true" | "false" | "check" | "prohibited"
     overnight_max_hours: Optional[int] = None
     overnight_notes: Optional[str] = None
     has_toilets: Optional[bool] = None
     has_water: Optional[bool] = None
     has_showers: Optional[bool] = None
     has_bbq: Optional[bool] = None
-    pets_allowed: Optional[str] = None        # "yes" | "leashed" | "no"
-    fires_allowed: Optional[str] = None       # "true" | "false" | "seasonal"
+    pets_allowed: Optional[str] = None  # "yes" | "leashed" | "no"
+    fires_allowed: Optional[str] = None  # "true" | "false" | "seasonal"
     max_stay_days: Optional[float] = None
     accessible: Optional[bool] = None
     quality_score: float = 0.0
@@ -554,12 +664,16 @@ class GuideContext(BaseModel):
 
     traffic_summary: Optional[Dict[str, Any]] = None
     hazards_summary: Optional[Dict[str, Any]] = None
-    route_score_summary: Optional[Dict[str, Any]] = None  # summarized RouteIntelligenceScore
+    route_score_summary: Optional[Dict[str, Any]] = (
+        None  # summarized RouteIntelligenceScore
+    )
     flood_summary: Optional[Dict[str, Any]] = None
     coverage_summary: Optional[Dict[str, Any]] = None
     wildlife_summary: Optional[Dict[str, Any]] = None
     weather_summary: Optional[Dict[str, Any]] = None
-    fuel_benchmarks: Optional[Dict[str, Dict[str, float]]] = None  # city -> {"unleaded": 182.5, "diesel": 167.7}
+    fuel_benchmarks: Optional[Dict[str, Dict[str, float]]] = (
+        None  # city -> {"unleaded": 182.5, "diesel": 167.7}
+    )
 
     # Live driver state - fuel, fatigue, speed, night, temp, ETA
     driver_state: Optional[Dict[str, Any]] = None
@@ -569,6 +683,7 @@ class GuideContext(BaseModel):
 
 class GuideAction(BaseModel):
     """Structured UI action rendered as a button/pill in the chat."""
+
     type: GuideActionType
     label: str
     place_id: Optional[str] = None
@@ -604,11 +719,24 @@ class GuideTurnRequest(BaseModel):
     relevant_places: List[WirePlace] = Field(default_factory=list)
 
 
+class GuideSource(BaseModel):
+    """A web source the guide consulted this turn, surfaced for trust."""
+
+    title: str = ""
+    url: str = ""
+
+
 class GuideTurnResponse(BaseModel):
     assistant: str = ""
     actions: List[GuideAction] = Field(default_factory=list)
     tool_calls: List[GuideToolCall] = Field(default_factory=list)
     done: bool = False
+    # True when the guide actually ran a web search this turn (vs. answered
+    # from knowledge / cached places). Lets the client show a "checked the web"
+    # affordance and lets test harnesses observe the inline search.
+    web_searched: bool = False
+    # Sources consulted during this turn's web search(es), for citation UI.
+    sources: List[GuideSource] = Field(default_factory=list)
 
 
 # ──────────────────────────────────────────────────────────────
@@ -616,10 +744,24 @@ class GuideTurnResponse(BaseModel):
 # ──────────────────────────────────────────────────────────────
 
 TrafficSeverity = Literal["info", "minor", "moderate", "major", "unknown"]
-TrafficType = Literal["hazard", "closure", "congestion", "roadworks", "flooding", "incident", "unknown"]
+TrafficType = Literal[
+    "hazard", "closure", "congestion", "roadworks", "flooding", "incident", "unknown"
+]
 
 HazardSeverity = Literal["low", "medium", "high", "unknown"]
-HazardKind = Literal["flood", "cyclone", "storm", "fire", "wind", "heat", "marine", "weather_warning", "road_crash", "road_closure", "unknown"]
+HazardKind = Literal[
+    "flood",
+    "cyclone",
+    "storm",
+    "fire",
+    "wind",
+    "heat",
+    "marine",
+    "weather_warning",
+    "road_crash",
+    "road_closure",
+    "unknown",
+]
 
 # CAP-AU urgency and certainty levels (used for composite severity scoring)
 CapUrgency = Literal["immediate", "expected", "future", "past", "unknown"]
@@ -628,10 +770,10 @@ CapCertainty = Literal["observed", "likely", "possible", "unlikely", "unknown"]
 # Route impact classification - computed client-side by intersecting alert
 # geometry with the route polyline buffer.
 RouteImpact = Literal[
-    "blocks_route",     # closure/flood geometry intersects route within 500m
-    "affects_route",    # hazard zone covers part of route, road may be passable
-    "nearby",           # within corridor but not directly on route
-    "informational",    # in the region but irrelevant to this specific route
+    "blocks_route",  # closure/flood geometry intersects route within 500m
+    "affects_route",  # hazard zone covers part of route, road may be passable
+    "nearby",  # within corridor but not directly on route
+    "informational",  # in the region but irrelevant to this specific route
 ]
 
 GeoJSON = Dict[str, Any]
@@ -701,14 +843,23 @@ class HazardOverlay(BaseModel):
 # ──────────────────────────────────────────────────────────────
 
 FuelType = Literal[
-    "diesel", "unleaded", "premium_unleaded_95", "premium_unleaded_98",
-    "e10", "lpg", "adblue", "truck_diesel", "premium_diesel", "e85", "biodiesel",
+    "diesel",
+    "unleaded",
+    "premium_unleaded_95",
+    "premium_unleaded_98",
+    "e10",
+    "lpg",
+    "adblue",
+    "truck_diesel",
+    "premium_diesel",
+    "e85",
+    "biodiesel",
 ]
 
 
 class FuelPrice(BaseModel):
     fuel_type: str  # "E10", "Unleaded", "Diesel", "PULP 95", "PULP 98", "LPG", "Premium Diesel",
-                    # "adblue", "truck_diesel", "premium_diesel", "e85", "biodiesel"
+    # "adblue", "truck_diesel", "premium_diesel", "e85", "biodiesel"
     price_cents: float
     last_updated: Optional[str] = None
 
@@ -755,13 +906,16 @@ class FuelOverlay(BaseModel):
     created_at: str
     stations: List[FuelStation] = Field(default_factory=list)
     ev_chargers: List[EVCharger] = Field(default_factory=list)
-    city_averages: Dict[str, Dict[str, float]] = Field(default_factory=dict)  # city -> {"unleaded": 182.5, "diesel": 167.7}
+    city_averages: Dict[str, Dict[str, float]] = Field(
+        default_factory=dict
+    )  # city -> {"unleaded": 182.5, "diesel": 167.7}
     warnings: List[str] = Field(default_factory=list)
 
 
 # ──────────────────────────────────────────────────────────────
 # Flood gauge overlay
 # ──────────────────────────────────────────────────────────────
+
 
 class FloodGauge(BaseModel):
     station_no: str
@@ -777,9 +931,9 @@ class FloodGauge(BaseModel):
 
 
 class FloodCatchment(BaseModel):
-    aac: str          # area code e.g. "QLD_FL004"
-    dist_name: str    # e.g. "Brisbane River"
-    level: str        # "watch" or "warning"
+    aac: str  # area code e.g. "QLD_FL004"
+    dist_name: str  # e.g. "Brisbane River"
+    level: str  # "watch" or "warning"
     geometry: GeoJSON
 
 
@@ -873,6 +1027,7 @@ class OfflineBundleManifest(BaseModel):
 # Weather overlay
 # ──────────────────────────────────────────────────────────────
 
+
 class WeatherPoint(BaseModel):
     lat: float
     lng: float
@@ -912,6 +1067,7 @@ class WeatherOverlay(BaseModel):
 # Rest Areas + Fatigue Management overlay
 # ──────────────────────────────────────────────────────────────
 
+
 class RestFacilities(BaseModel):
     toilets: bool | None = None
     drinking_water: bool | None = None
@@ -930,7 +1086,9 @@ class RestArea(BaseModel):
     name: str | None = None
     lat: float
     lng: float
-    type: Literal["rest_area", "camp_site", "caravan_site", "service_station", "toilets"]
+    type: Literal[
+        "rest_area", "camp_site", "caravan_site", "service_station", "toilets"
+    ]
     km_along: float | None = None
     distance_from_route_km: float | None = None
     quality_score: int = 0
@@ -981,7 +1139,7 @@ class CoverageGap(BaseModel):
     km_from: float
     km_to: float
     gap_km: float
-    carrier: str   # "Telstra", "Optus", "Vodafone", or "all"
+    carrier: str  # "Telstra", "Optus", "Vodafone", or "all"
     message: str
 
 
@@ -993,13 +1151,16 @@ class CoverageOverlay(BaseModel):
     points: List[CoveragePoint] = Field(default_factory=list)
     gaps: List[CoverageGap] = Field(default_factory=list)
     best_carrier_overall: Optional[str] = None
-    carrier_scores: Dict[str, float] = Field(default_factory=dict)  # carrier -> % route with 4G
+    carrier_scores: Dict[str, float] = Field(
+        default_factory=dict
+    )  # carrier -> % route with 4G
     warnings: List[str] = Field(default_factory=list)
 
 
 # ──────────────────────────────────────────────────────────────
 # Wildlife Hazard Overlay
 # ──────────────────────────────────────────────────────────────
+
 
 class WildlifeZone(BaseModel):
     lat: float
@@ -1031,6 +1192,7 @@ class WildlifeOverlay(BaseModel):
 # Sync (minimal placeholder)
 # ──────────────────────────────────────────────────────────────
 
+
 class SyncOp(BaseModel):
     id: str
     type: str
@@ -1050,16 +1212,17 @@ class SyncOpsResponse(BaseModel):
 # Route Intelligence Score
 # ──────────────────────────────────────────────────────────────
 
+
 class RouteScoreCategory(BaseModel):
     score: float  # 0.0-10.0
-    label: str    # "Excellent", "Good", "Fair", "Poor", "Dangerous"
+    label: str  # "Excellent", "Good", "Fair", "Poor", "Dangerous"
     factors: List[str] = Field(default_factory=list)  # Human-readable deduction reasons
 
 
 class RouteIntelligenceScore(BaseModel):
-    overall: float        # 0.0-10.0
+    overall: float  # 0.0-10.0
     overall_label: str
-    summary: str          # Actionable 1-2 sentence advice
+    summary: str  # Actionable 1-2 sentence advice
     safety: RouteScoreCategory
     conditions: RouteScoreCategory
     services: RouteScoreCategory
@@ -1071,6 +1234,7 @@ class RouteIntelligenceScore(BaseModel):
 # Emergency Services overlay (GA Emergency Management Facilities)
 # CC-BY 4.0, no auth required
 # ──────────────────────────────────────────────────────────────
+
 
 class EmergencyFacility(BaseModel):
     id: str
@@ -1098,6 +1262,7 @@ class EmergencyServicesOverlay(BaseModel):
 # Heritage & Protected Areas overlay (DCCEEW GIS, CC-BY 3.0 AU)
 # ──────────────────────────────────────────────────────────────
 
+
 class HeritageSite(BaseModel):
     id: str
     name: str
@@ -1121,6 +1286,7 @@ class HeritageOverlay(BaseModel):
 # ──────────────────────────────────────────────────────────────
 # Air Quality overlay (OpenWeatherMap Air Pollution API)
 # ──────────────────────────────────────────────────────────────
+
 
 class AirQualityPoint(BaseModel):
     lat: float
@@ -1151,6 +1317,7 @@ class AirQualityOverlay(BaseModel):
 # ──────────────────────────────────────────────────────────────
 # Bushfire overlay (NSW RFS + NASA FIRMS)
 # ──────────────────────────────────────────────────────────────
+
 
 class BushfireIncident(BaseModel):
     id: str
@@ -1195,6 +1362,7 @@ class BushfireOverlay(BaseModel):
 # ──────────────────────────────────────────────────────────────
 # Speed Cameras overlay (NSW TfNSW + Brisbane Council, CC-BY)
 # ──────────────────────────────────────────────────────────────
+
 
 class SpeedCamera(BaseModel):
     id: str
@@ -1247,6 +1415,7 @@ class SpeedCamerasOverlay(BaseModel):
 # Public Toilets + Dump Points overlay (Dept of Health, CC BY 3.0 AU)
 # ──────────────────────────────────────────────────────────────
 
+
 class PublicToilet(BaseModel):
     id: str
     name: Optional[str] = None
@@ -1283,6 +1452,7 @@ class ToiletsOverlay(BaseModel):
 # School Zones overlay (TfNSW, CC BY 3.0 AU)
 # ──────────────────────────────────────────────────────────────
 
+
 class SchoolZone(BaseModel):
     id: str
     school_name: Optional[str] = None
@@ -1313,6 +1483,7 @@ class SchoolZonesOverlay(BaseModel):
 # Roadkill hotspots overlay (NSW BioNet, CC BY 3.0 AU)
 # ──────────────────────────────────────────────────────────────
 
+
 class RoadkillHotspot(BaseModel):
     id: str
     lat: float
@@ -1342,31 +1513,37 @@ class RoadkillOverlay(BaseModel):
 # Presence (dead-reckoning proximity awareness)
 # ──────────────────────────────────────────────────────────────
 
+
 class PresencePingRequest(BaseModel):
     lat: float
     lng: float
     speed_kmh: float = 0.0
     heading_deg: float = 0.0
 
+
 class PresencePingResponse(BaseModel):
     ok: bool = True
 
+
 class NearbyRoamer(BaseModel):
     """A projected roamer position returned to the querying user."""
+
     user_id: str
     predicted_lat: float
     predicted_lng: float
     speed_kmh: float
     heading_deg: float
-    last_pinged_at: str              # ISO8601 UTC
-    predicted_at: str                # ISO8601 UTC - when prediction was computed
-    distance_km: float               # from querying user's position
+    last_pinged_at: str  # ISO8601 UTC
+    predicted_at: str  # ISO8601 UTC - when prediction was computed
+    distance_km: float  # from querying user's position
     confidence: Literal["high", "medium", "low"]  # degrades with Δt
+
 
 class NearbyQuery(BaseModel):
     lat: float
     lng: float
-    radius_km: float = 50.0         # default search radius
+    radius_km: float = 50.0  # default search radius
+
 
 class NearbyResponse(BaseModel):
     roamers: List[NearbyRoamer] = Field(default_factory=list)
@@ -1377,14 +1554,14 @@ class NearbyResponse(BaseModel):
 # ──────────────────────────────────────────────────────────────
 
 ObservationType = Literal[
-    "road_condition",     # corrugated, pothole, washed_out, flooded, smooth
-    "road_closure",       # road closed, gate locked, bridge out
-    "hazard",             # fallen tree, animal on road, debris
-    "fuel_price",         # observed fuel price at a station
-    "speed_trap",         # speed camera / police speed check
-    "weather",            # fog, dust storm, black ice, heavy rain
-    "campsite",           # free camp condition, water available
-    "general",            # anything else
+    "road_condition",  # corrugated, pothole, washed_out, flooded, smooth
+    "road_closure",  # road closed, gate locked, bridge out
+    "hazard",  # fallen tree, animal on road, debris
+    "fuel_price",  # observed fuel price at a station
+    "speed_trap",  # speed camera / police speed check
+    "weather",  # fog, dust storm, black ice, heavy rain
+    "campsite",  # free camp condition, water available
+    "general",  # anything else
 ]
 
 ObservationSeverity = Literal["info", "caution", "warning", "danger"]
@@ -1399,8 +1576,10 @@ class UserObservation(BaseModel):
     lng: float
     heading_deg: Optional[float] = None
     message: Optional[str] = None
-    value: Optional[str] = None      # e.g. "189.9" for fuel_price, "corrugated" for road_condition
-    created_at: str                   # ISO8601 UTC
+    value: Optional[str] = (
+        None  # e.g. "189.9" for fuel_price, "corrugated" for road_condition
+    )
+    created_at: str  # ISO8601 UTC
     expires_at: Optional[str] = None  # ISO8601 UTC - auto-expire after TTL
 
 
@@ -1429,6 +1608,7 @@ class NearbyObservationsQuery(BaseModel):
 
 class AggregatedObservation(BaseModel):
     """Multiple user observations clustered into a single consensus point."""
+
     type: ObservationType
     severity: ObservationSeverity
     lat: float
@@ -1438,9 +1618,9 @@ class AggregatedObservation(BaseModel):
     report_count: int = 1
     first_reported_at: str
     last_reported_at: str
-    reporters: int = 1               # distinct users
-    confidence: float = 0.5          # 0.0-1.0, higher = more trustworthy
-    is_recent: bool = False          # last report within 30 minutes
+    reporters: int = 1  # distinct users
+    confidence: float = 0.5  # 0.0-1.0, higher = more trustworthy
+    is_recent: bool = False  # last report within 30 minutes
 
 
 class NearbyObservationsResponse(BaseModel):
@@ -1451,19 +1631,22 @@ class NearbyObservationsResponse(BaseModel):
 # Peer Sync (overlay delta exchange between roamers)
 # ──────────────────────────────────────────────────────────────
 
+
 class PeerSyncRequest(BaseModel):
     """Request a delta of overlay data newer than the caller's timestamps."""
+
     lat: float
     lng: float
-    radius_km: float = 200.0         # corridor radius to include data for
+    radius_km: float = 200.0  # corridor radius to include data for
     overlay_timestamps: Dict[str, str] = Field(default_factory=dict)
     # e.g. {"traffic": "2026-03-16T10:00:00Z", "hazards": "2026-03-16T09:00:00Z"}
 
 
 class PeerSyncDelta(BaseModel):
     """Delta payload: only overlay items newer than the caller's timestamps."""
+
     observations: List[AggregatedObservation] = Field(default_factory=list)
     traffic_events: List[TrafficEvent] = Field(default_factory=list)
     hazard_events: List[HazardEvent] = Field(default_factory=list)
     fuel_updates: List[FuelStation] = Field(default_factory=list)
-    generated_at: str                 # ISO8601 UTC
+    generated_at: str  # ISO8601 UTC

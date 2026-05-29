@@ -15,26 +15,40 @@ class Settings(BaseSettings):
     edges_database_url: str | None = Field(default=None, alias="EDGES_DATABASE_URL")
 
     # Edges DB - SQLite fallback (local dev)
-    edges_db_path: str = Field(default="app/data/edges_queensland.db", alias="EDGES_DB_PATH")
+    edges_db_path: str = Field(
+        default="app/data/edges_queensland.db", alias="EDGES_DB_PATH"
+    )
 
     # OSRM
     osrm_base_url: str = Field(default="http://127.0.0.1:5000", alias="OSRM_BASE_URL")
     osrm_profile: str = Field(default="driving", alias="OSRM_PROFILE")
     mapbox_token: str = Field(default="", alias="ROAM_MAPBOX_TOKEN")
     mapbox_country: str = Field(default="au", alias="ROAM_MAPBOX_COUNTRY")
-    mapbox_geocode_cache_seconds: int = Field(default=86400, alias="MAPBOX_GEOCODE_CACHE_SECONDS")  # 24h
+    mapbox_geocode_cache_seconds: int = Field(
+        default=86400, alias="MAPBOX_GEOCODE_CACHE_SECONDS"
+    )  # 24h
 
     # Versioning
     algo_version: str = Field(default="navpack.v1.osrm.mld", alias="ALGO_VERSION")
-    corridor_algo_version: str = Field(default="corridor.v16.tree", alias="CORRIDOR_ALGO_VERSION")
-    places_algo_version: str = Field(default="places.v3.address.house_number", alias="PLACES_ALGO_VERSION")
+    corridor_algo_version: str = Field(
+        default="corridor.v16.tree", alias="CORRIDOR_ALGO_VERSION"
+    )
+    places_algo_version: str = Field(
+        default="places.v3.address.house_number", alias="PLACES_ALGO_VERSION"
+    )
 
     # Corridor defaults
-    corridor_buffer_m_default: int = Field(default=5000, alias="CORRIDOR_BUFFER_M_DEFAULT")
-    corridor_max_edges_default: int = Field(default=2000000, alias="CORRIDOR_MAX_EDGES_DEFAULT")
+    corridor_buffer_m_default: int = Field(
+        default=5000, alias="CORRIDOR_BUFFER_M_DEFAULT"
+    )
+    corridor_max_edges_default: int = Field(
+        default=2000000, alias="CORRIDOR_MAX_EDGES_DEFAULT"
+    )
 
     # Places (Overpass)
-    overpass_url: str = Field(default="https://overpass-api.de/api/interpreter", alias="OVERPASS_URL")
+    overpass_url: str = Field(
+        default="https://overpass-api.de/api/interpreter", alias="OVERPASS_URL"
+    )
     overpass_fallback_urls: list[str] = Field(
         default=[
             "https://overpass.kumi.systems/api/interpreter",
@@ -51,14 +65,22 @@ class Settings(BaseSettings):
     places_tile_step_deg: float = Field(default=0.15, alias="PLACES_TILE_STEP_DEG")
     places_max_tiles: int = Field(default=64, alias="PLACES_MAX_TILES")
     places_hard_cap: int = Field(default=12000, alias="PLACES_HARD_CAP")
-    places_local_satisfy_ratio: float = Field(default=0.70, alias="PLACES_LOCAL_SATISFY_RATIO")
-    places_tile_ttl_s: int = Field(default=60 * 60 * 24 * 14, alias="PLACES_TILE_TTL_S")  # 14d
+    places_local_satisfy_ratio: float = Field(
+        default=0.70, alias="PLACES_LOCAL_SATISFY_RATIO"
+    )
+    places_tile_ttl_s: int = Field(
+        default=60 * 60 * 24 * 14, alias="PLACES_TILE_TTL_S"
+    )  # 14d
     places_time_budget_s: float = Field(default=10.0, alias="PLACES_TIME_BUDGET_S")
-    places_max_overpass_tiles_per_req: int = Field(default=12, alias="PLACES_MAX_OVERPASS_TILES_PER_REQ")
+    places_max_overpass_tiles_per_req: int = Field(
+        default=12, alias="PLACES_MAX_OVERPASS_TILES_PER_REQ"
+    )
 
     # Supabase
     supa_url: str | None = Field(default=None, alias="SUPA_URL")
-    supa_service_role_key: str | None = Field(default=None, alias="SUPA_SERVICE_ROLE_KEY")
+    supa_service_role_key: str | None = Field(
+        default=None, alias="SUPA_SERVICE_ROLE_KEY"
+    )
     supa_bucket: str = Field(default="roam-bundles", alias="SUPA_BUCKET")
     supa_enabled: bool = Field(default=False, alias="SUPA_ENABLED")
 
@@ -94,15 +116,27 @@ class Settings(BaseSettings):
     )
 
     qldtraffic_cache_seconds: int = Field(default=60, alias="QLDTRAFFIC_CACHE_SECONDS")
-    qldtraffic_full_refresh_seconds: int = Field(default=900, alias="QLDTRAFFIC_FULL_REFRESH_SECONDS")
+    qldtraffic_full_refresh_seconds: int = Field(
+        default=900, alias="QLDTRAFFIC_FULL_REFRESH_SECONDS"
+    )
 
-    traffic_include_past_hours: int = Field(default=6, alias="NAV_TRAFFIC_INCLUDE_PAST_HOURS")
+    traffic_include_past_hours: int = Field(
+        default=6, alias="NAV_TRAFFIC_INCLUDE_PAST_HOURS"
+    )
 
     # Back-compat (optional QLD GeoJSON feed URLs)
-    qldtraffic_incidents_url: str | None = Field(default=None, alias="QLDTRAFFIC_INCIDENTS_URL")
-    qldtraffic_roadworks_url: str | None = Field(default=None, alias="QLDTRAFFIC_ROADWORKS_URL")
-    qldtraffic_closures_url: str | None = Field(default=None, alias="QLDTRAFFIC_CLOSURES_URL")
-    qldtraffic_flooding_url: str | None = Field(default=None, alias="QLDTRAFFIC_FLOODING_URL")
+    qldtraffic_incidents_url: str | None = Field(
+        default=None, alias="QLDTRAFFIC_INCIDENTS_URL"
+    )
+    qldtraffic_roadworks_url: str | None = Field(
+        default=None, alias="QLDTRAFFIC_ROADWORKS_URL"
+    )
+    qldtraffic_closures_url: str | None = Field(
+        default=None, alias="QLDTRAFFIC_CLOSURES_URL"
+    )
+    qldtraffic_flooding_url: str | None = Field(
+        default=None, alias="QLDTRAFFIC_FLOODING_URL"
+    )
 
     # ──────────────────────────────────────────────────────────────
     # NSW Traffic - Live Traffic NSW (TfNSW Open Data)
@@ -343,44 +377,58 @@ class Settings(BaseSettings):
     # as of March 2026; set enabled=True once a working URL is found.
     # ──────────────────────────────────────────────────────────────
 
-    parks_qld_alerts_enabled: bool = Field(default=True, alias="PARKS_QLD_ALERTS_ENABLED")
+    parks_qld_alerts_enabled: bool = Field(
+        default=True, alias="PARKS_QLD_ALERTS_ENABLED"
+    )
     parks_qld_alerts_url: str = Field(
         default="https://parks.qld.gov.au/xml/rss/parkalerts.xml",
         alias="PARKS_QLD_ALERTS_URL",
     )
-    parks_nsw_alerts_enabled: bool = Field(default=True, alias="PARKS_NSW_ALERTS_ENABLED")
+    parks_nsw_alerts_enabled: bool = Field(
+        default=True, alias="PARKS_NSW_ALERTS_ENABLED"
+    )
     parks_nsw_alerts_url: str = Field(
         default="https://www.nationalparks.nsw.gov.au/api/rssfeed/get",
         alias="PARKS_NSW_ALERTS_URL",
     )
-    parks_wa_alerts_enabled: bool = Field(default=False, alias="PARKS_WA_ALERTS_ENABLED")
+    parks_wa_alerts_enabled: bool = Field(
+        default=False, alias="PARKS_WA_ALERTS_ENABLED"
+    )
     parks_wa_alerts_url: str = Field(
         default="https://alerts.dbca.wa.gov.au/Home/map?atype=park-road-closures%2Cpark-closures%2Cpark-notification",
         alias="PARKS_WA_ALERTS_URL",
     )
     # VIC - Parks Victoria RSS: no reachable endpoint confirmed (checked Mar 2026).
     # parks.vic.gov.au/get-into-nature/park-alerts/rss returns HTML; API host refused.
-    parks_vic_alerts_enabled: bool = Field(default=False, alias="PARKS_VIC_ALERTS_ENABLED")
+    parks_vic_alerts_enabled: bool = Field(
+        default=False, alias="PARKS_VIC_ALERTS_ENABLED"
+    )
     parks_vic_alerts_url: str = Field(
         default="https://www.parks.vic.gov.au/get-into-nature/park-alerts/rss",
         alias="PARKS_VIC_ALERTS_URL",
     )
     # SA - DEW / parks.sa.gov.au RSS: /alerts/rss returns 404 (checked Mar 2026).
-    parks_sa_alerts_enabled: bool = Field(default=False, alias="PARKS_SA_ALERTS_ENABLED")
+    parks_sa_alerts_enabled: bool = Field(
+        default=False, alias="PARKS_SA_ALERTS_ENABLED"
+    )
     parks_sa_alerts_url: str = Field(
         default="https://www.parks.sa.gov.au/alerts/rss",
         alias="PARKS_SA_ALERTS_URL",
     )
     # NT - Parks and Wildlife RSS: nt.gov.au and parksandwildlife.nt.gov.au
     # both return 404 for RSS paths (checked Mar 2026).
-    parks_nt_alerts_enabled: bool = Field(default=False, alias="PARKS_NT_ALERTS_ENABLED")
+    parks_nt_alerts_enabled: bool = Field(
+        default=False, alias="PARKS_NT_ALERTS_ENABLED"
+    )
     parks_nt_alerts_url: str = Field(
         default="https://nt.gov.au/leisure/parks-reserves/park-alerts/rss",
         alias="PARKS_NT_ALERTS_URL",
     )
     # TAS - Parks and Wildlife Service RSS: parks.tas.gov.au RSS paths return
     # 404 (checked Mar 2026).
-    parks_tas_alerts_enabled: bool = Field(default=False, alias="PARKS_TAS_ALERTS_ENABLED")
+    parks_tas_alerts_enabled: bool = Field(
+        default=False, alias="PARKS_TAS_ALERTS_ENABLED"
+    )
     parks_tas_alerts_url: str = Field(
         default="https://parks.tas.gov.au/explore-our-parks/park-alerts/rss",
         alias="PARKS_TAS_ALERTS_URL",
@@ -405,11 +453,42 @@ class Settings(BaseSettings):
     # deepseek-chat = DeepSeek-V3 (best quality, fast, cheap)
     # deepseek-reasoner = DeepSeek-R1 (slower, for complex reasoning)
     # ──────────────────────────────────────────────────────────────
+    # Provider selection - "anthropic" (default, Claude Sonnet), "deepseek",
+    # "openai", or "gemini". Non-anthropic providers speak the OpenAI-compatible
+    # /chat/completions shape; anthropic uses the native Messages API with a
+    # forced structured-output tool. If the selected provider has no key set,
+    # GuideService falls back to whichever provider does.
+    guide_provider: str = Field(default="anthropic", alias="GUIDE_PROVIDER")
+
+    anthropic_api_key: str = Field(default="", alias="ANTHROPIC_API_KEY")
+    anthropic_model: str = Field(default="claude-sonnet-4-6", alias="ANTHROPIC_MODEL")
+    anthropic_base_url: str = Field(
+        default="https://api.anthropic.com/v1", alias="ANTHROPIC_BASE_URL"
+    )
+    anthropic_version: str = Field(default="2023-06-01", alias="ANTHROPIC_VERSION")
+
+    openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
+    openai_model: str = Field(default="gpt-5.1", alias="OPENAI_MODEL")
+    openai_base_url: str = Field(
+        default="https://api.openai.com/v1", alias="OPENAI_BASE_URL"
+    )
+
+    gemini_api_key: str = Field(default="", alias="GEMINI_API_KEY")
+    gemini_model: str = Field(default="gemini-3-pro", alias="GEMINI_MODEL")
+    gemini_base_url: str = Field(
+        default="https://generativelanguage.googleapis.com/v1beta/openai",
+        alias="GEMINI_BASE_URL",
+    )
+
     deepseek_api_key: str = Field(default="", alias="DEEPSEEK_API_KEY")
     deepseek_model: str = Field(default="deepseek-chat", alias="DEEPSEEK_MODEL")
-    deepseek_base_url: str = Field(default="https://api.deepseek.com/v1", alias="DEEPSEEK_BASE_URL")
+    deepseek_base_url: str = Field(
+        default="https://api.deepseek.com/v1", alias="DEEPSEEK_BASE_URL"
+    )
     guide_max_steps: int = Field(default=4, alias="GUIDE_MAX_STEPS")
     guide_timeout_s: float = Field(default=90.0, alias="GUIDE_TIMEOUT_S")
+    guide_temperature: float = Field(default=0.7, alias="GUIDE_TEMPERATURE")
+    guide_max_output_tokens: int = Field(default=4000, alias="GUIDE_MAX_OUTPUT_TOKENS")
 
     # ──────────────────────────────────────────────────────────────
     # ──────────────────────────────────────────────────────────────
@@ -422,7 +501,9 @@ class Settings(BaseSettings):
     # ──────────────────────────────────────────────────────────────
     # RevenueCat webhook
     # ──────────────────────────────────────────────────────────────
-    revenuecat_webhook_secret: str = Field(default="", alias="REVENUECAT_WEBHOOK_SECRET")
+    revenuecat_webhook_secret: str = Field(
+        default="", alias="REVENUECAT_WEBHOOK_SECRET"
+    )
 
     # ──────────────────────────────────────────────────────────────
     # Weather overlay - Open-Meteo BOM ACCESS-G (self-hosted or public)
@@ -435,7 +516,9 @@ class Settings(BaseSettings):
         alias="WEATHER_ALGO_VERSION",
     )
     weather_cache_seconds: int = Field(default=3600, alias="WEATHER_CACHE_SECONDS")
-    weather_sample_interval_km: float = Field(default=50.0, alias="WEATHER_SAMPLE_INTERVAL_KM")
+    weather_sample_interval_km: float = Field(
+        default=50.0, alias="WEATHER_SAMPLE_INTERVAL_KM"
+    )
     open_meteo_base_url: str = Field(
         default="https://api.open-meteo.com",
         alias="OPEN_METEO_BASE_URL",
@@ -503,22 +586,38 @@ class Settings(BaseSettings):
     # Attribution: DATA_OWNER_NAME must be displayed per station.
     # ──────────────────────────────────────────────────────────────
 
-    flood_algo_version: str = Field(default="flood.v2.bom.kiwis+catchments+shapely", alias="FLOOD_ALGO_VERSION")
+    flood_algo_version: str = Field(
+        default="flood.v2.bom.kiwis+catchments+shapely", alias="FLOOD_ALGO_VERSION"
+    )
     flood_cache_seconds: int = Field(default=1800, alias="FLOOD_CACHE_SECONDS")  # 30min
     flood_enabled: bool = Field(default=True, alias="FLOOD_ENABLED")
-    flood_station_refresh_hours: int = Field(default=24, alias="FLOOD_STATION_REFRESH_HOURS")
-    bom_kiwis_base_url: str = Field(default="http://www.bom.gov.au/waterdata/services", alias="BOM_KIWIS_BASE_URL")
-    bom_station_data_url: str = Field(default="https://www.bom.gov.au/waterdata/data/stationdata.json", alias="BOM_STATION_DATA_URL")
-    bom_flood_catchments_url: str = Field(default="https://hosting.wsapi.cloud.bom.gov.au/arcgis/rest/services/flood/National_Flood_Gauge_Network/FeatureServer", alias="BOM_FLOOD_CATCHMENTS_URL")
+    flood_station_refresh_hours: int = Field(
+        default=24, alias="FLOOD_STATION_REFRESH_HOURS"
+    )
+    bom_kiwis_base_url: str = Field(
+        default="http://www.bom.gov.au/waterdata/services", alias="BOM_KIWIS_BASE_URL"
+    )
+    bom_station_data_url: str = Field(
+        default="https://www.bom.gov.au/waterdata/data/stationdata.json",
+        alias="BOM_STATION_DATA_URL",
+    )
+    bom_flood_catchments_url: str = Field(
+        default="https://hosting.wsapi.cloud.bom.gov.au/arcgis/rest/services/flood/National_Flood_Gauge_Network/FeatureServer",
+        alias="BOM_FLOOD_CATCHMENTS_URL",
+    )
 
     # ──────────────────────────────────────────────────────────────
     # Rest Areas + Fatigue Management overlay (Overpass, static data)
     # 24h cache TTL - rest areas rarely change
     # ──────────────────────────────────────────────────────────────
-    rest_algo_version: str = Field(default="rest_areas.v3.overpass+qld+wa+nsw", alias="REST_ALGO_VERSION")
+    rest_algo_version: str = Field(
+        default="rest_areas.v3.overpass+qld+wa+nsw", alias="REST_ALGO_VERSION"
+    )
     rest_cache_seconds: int = Field(default=86400, alias="REST_CACHE_SECONDS")
     fatigue_max_gap_km: float = Field(default=180.0, alias="FATIGUE_MAX_GAP_KM")
-    fatigue_rest_interval_km: float = Field(default=180.0, alias="FATIGUE_REST_INTERVAL_KM")
+    fatigue_rest_interval_km: float = Field(
+        default=180.0, alias="FATIGUE_REST_INTERVAL_KM"
+    )
 
     # NSW TfNSW Rest Areas (requires Open Data API key)
     # DISABLED: api.transport.nsw.gov.au returns 404 on spatial endpoint (Mar 2026)
@@ -534,16 +633,24 @@ class Settings(BaseSettings):
     # Bulk download updated daily; cache for 24h (towers rarely move).
     # No API key required for the free bulk download tier.
     # ──────────────────────────────────────────────────────────────
-    coverage_algo_version: str = Field(default="coverage.v1.opencellid", alias="COVERAGE_ALGO_VERSION")
-    coverage_cache_seconds: int = Field(default=86400, alias="COVERAGE_CACHE_SECONDS")  # 24h
+    coverage_algo_version: str = Field(
+        default="coverage.v1.opencellid", alias="COVERAGE_ALGO_VERSION"
+    )
+    coverage_cache_seconds: int = Field(
+        default=86400, alias="COVERAGE_CACHE_SECONDS"
+    )  # 24h
     coverage_enabled: bool = Field(default=True, alias="COVERAGE_ENABLED")
     opencellid_token: str = Field(default="", alias="OPENCELLID_TOKEN")
     opencellid_download_url: str = Field(
         default="https://opencellid.org/ocid/downloads?token={token}&type=mcc&file=505.csv.gz",
         alias="OPENCELLID_DOWNLOAD_URL",
     )
-    coverage_no_signal_gap_km: float = Field(default=50.0, alias="COVERAGE_NO_SIGNAL_GAP_KM")
-    opencellid_local_db_path: str = Field(default="data/celltowers/505.csv.gz", alias="OPENCELLID_LOCAL_DB_PATH")
+    coverage_no_signal_gap_km: float = Field(
+        default=50.0, alias="COVERAGE_NO_SIGNAL_GAP_KM"
+    )
+    opencellid_local_db_path: str = Field(
+        default="data/celltowers/505.csv.gz", alias="OPENCELLID_LOCAL_DB_PATH"
+    )
 
     # Guide Web Search
     # Gives the guide live web search so it can answer about current
@@ -564,10 +671,16 @@ class Settings(BaseSettings):
     # Commercial-use CC licenses (cc0, cc-by) enforced at query time.
     # Rate limit: 60 req/min (iNaturalist public API cap).
     # ──────────────────────────────────────────────────────────────
-    wildlife_algo_version: str = Field(default="wildlife.v2.inaturalist.cc", alias="WILDLIFE_ALGO_VERSION")
-    wildlife_cache_seconds: int = Field(default=604800, alias="WILDLIFE_CACHE_SECONDS")  # 7 days
+    wildlife_algo_version: str = Field(
+        default="wildlife.v2.inaturalist.cc", alias="WILDLIFE_ALGO_VERSION"
+    )
+    wildlife_cache_seconds: int = Field(
+        default=604800, alias="WILDLIFE_CACHE_SECONDS"
+    )  # 7 days
     wildlife_enabled: bool = Field(default=True, alias="WILDLIFE_ENABLED")
-    wildlife_sample_interval_km: float = Field(default=50.0, alias="WILDLIFE_SAMPLE_INTERVAL_KM")
+    wildlife_sample_interval_km: float = Field(
+        default=50.0, alias="WILDLIFE_SAMPLE_INTERVAL_KM"
+    )
     wildlife_radius_km: float = Field(default=25.0, alias="WILDLIFE_RADIUS_KM")
     wildlife_per_page: int = Field(default=50, alias="WILDLIFE_PER_PAGE")
     wildlife_rate_per_min: int = Field(default=60, alias="WILDLIFE_RATE_PER_MIN")
@@ -575,7 +688,9 @@ class Settings(BaseSettings):
     wildlife_photo_size: str = Field(default="medium", alias="WILDLIFE_PHOTO_SIZE")
     # High-occurrence threshold for "high" risk classification
     wildlife_high_risk_count: int = Field(default=10, alias="WILDLIFE_HIGH_RISK_COUNT")
-    wildlife_medium_risk_count: int = Field(default=3, alias="WILDLIFE_MEDIUM_RISK_COUNT")
+    wildlife_medium_risk_count: int = Field(
+        default=3, alias="WILDLIFE_MEDIUM_RISK_COUNT"
+    )
 
     # ──────────────────────────────────────────────────────────────
     # Bushfire Overlay - NSW RFS + NASA FIRMS
@@ -595,7 +710,9 @@ class Settings(BaseSettings):
         default="emergency.v1.ga.facilities",
         alias="EMERGENCY_ALGO_VERSION",
     )
-    emergency_cache_seconds: int = Field(default=86400, alias="EMERGENCY_CACHE_SECONDS")  # 24h
+    emergency_cache_seconds: int = Field(
+        default=86400, alias="EMERGENCY_CACHE_SECONDS"
+    )  # 24h
     emergency_enabled: bool = Field(default=True, alias="EMERGENCY_ENABLED")
     ga_emergency_base_url: str = Field(
         default="http://services.ga.gov.au/gis/rest/services/Emergency_Management_Facilities/MapServer",
@@ -611,7 +728,9 @@ class Settings(BaseSettings):
         default="heritage.v1.dcceew.capad",
         alias="HERITAGE_ALGO_VERSION",
     )
-    heritage_cache_seconds: int = Field(default=604800, alias="HERITAGE_CACHE_SECONDS")  # 7 days
+    heritage_cache_seconds: int = Field(
+        default=604800, alias="HERITAGE_CACHE_SECONDS"
+    )  # 7 days
     heritage_enabled: bool = Field(default=True, alias="HERITAGE_ENABLED")
     dcceew_gis_base_url: str = Field(
         default="https://gis.environment.gov.au/gispubmap/rest/services/ogc_services",
@@ -639,7 +758,9 @@ class Settings(BaseSettings):
         default="bushfire.v1.rfs+firms",
         alias="BUSHFIRE_ALGO_VERSION",
     )
-    bushfire_cache_seconds: int = Field(default=900, alias="BUSHFIRE_CACHE_SECONDS")  # 15min
+    bushfire_cache_seconds: int = Field(
+        default=900, alias="BUSHFIRE_CACHE_SECONDS"
+    )  # 15min
     bushfire_enabled: bool = Field(default=True, alias="BUSHFIRE_ENABLED")
     nsw_rfs_url: str = Field(
         default="https://www.rfs.nsw.gov.au/feeds/majorIncidents.json",
@@ -659,7 +780,9 @@ class Settings(BaseSettings):
         default="cameras.v1.nsw+brisbane",
         alias="CAMERAS_ALGO_VERSION",
     )
-    cameras_cache_seconds: int = Field(default=86400, alias="CAMERAS_CACHE_SECONDS")  # 24h
+    cameras_cache_seconds: int = Field(
+        default=86400, alias="CAMERAS_CACHE_SECONDS"
+    )  # 24h
     cameras_enabled: bool = Field(default=True, alias="CAMERAS_ENABLED")
 
     # ──────────────────────────────────────────────────────────────

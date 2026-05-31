@@ -5,7 +5,7 @@ end-to-end. Conductor reads this file to verify progress; updated after every
 feature batch.
 
 ## Phase
-**A - shipped 2026-05-31.** Moving to B (Stripe webhook for v2 SKUs).
+**A + B - shipped 2026-05-31.** Moving to C (Apple App Store Server API).
 
 ## Discoveries flagged to conductor (need conductor decision or action)
 
@@ -78,7 +78,14 @@ feature batch.
 - [ ] Conductor-driven `gcloud run deploy roam-backend --region
       australia-southeast1` (flagged)
 
-### Phase B - Stripe webhook for new SKUs (pending)
+### Phase B - Stripe webhook for new SKUs (shipped 2026-05-31)
+- [x] Plan written
+- [x] `POST /stripe/checkout/v2` - tier-picker checkout
+- [x] Webhook routes v1 sessions to `user_entitlements`, v2 sessions to
+      `entitlements` (idempotent on Stripe payment_intent)
+- [x] 12 new tests; CI green (24/24)
+- [x] OpenAPI regenerated (51 routes)
+- [ ] Conductor-driven `gcloud run deploy` (flagged)
 ### Phase C - Apple App Store Server API path (pending)
 ### Phase D - Google Play Developer API path (pending)
 ### Phase E - Unified POST /entitlement/redeem + grandfather (pending)
@@ -90,9 +97,10 @@ worker (conductor probes `gcloud run services describe roam-backend --region
 australia-southeast1` to verify).
 
 ## Next action
-Phase B: extend `app/api/stripe.py` to recognise the three new v2 product
-IDs (`glovebox_pass_month`, `glovebox_pass_season`, `glovebox_lifetime`)
-and write to the new `entitlements` table via
-`app/services/entitlements.upsert_entitlement`. Keep the v1 RevenueCat +
-legacy Stripe path writing to `user_entitlements` (no v1 disruption).
-Targeted commit: "feat(v2-billing): Stripe webhook handles v2 tiered SKUs".
+Phase C: Apple App Store Server API receipt verification. New module
+`app/services/apple_receipt.py` that verifies a JWS signed transaction with
+Apple's public keys, extracts `productId` + `transactionId` +
+`originalPurchaseDate`, detects the legacy `roam_unlimited` SKU for
+grandfathering. Reads ASC API key from settings (`apple_asc_api_key_*`).
+Targeted commit: "feat(v2-billing): Apple App Store Server API receipt
+verification + grandfather".

@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from typing import Optional
 
 import stripe as stripe_lib
@@ -15,6 +16,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from app.core.auth import AuthUser, get_optional_user
+from app.core.billing_models import SourcePlatform, Tier
 from app.core.error_models import (
     CheckoutSessionResponse,
     ErrorResponse,
@@ -23,6 +25,7 @@ from app.core.error_models import (
 )
 from app.core.settings import settings
 from app.core.supabase_admin import get_supabase_admin
+from app.services.entitlements import expiry_for_tier, upsert_entitlement
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +37,12 @@ router = APIRouter(prefix="/stripe", tags=["stripe"])
 
 class ConfirmRequest(BaseModel):
     session_id: str = Field(description="Stripe Checkout Session id, format `cs_...`")
+
+
+class CheckoutV2Request(BaseModel):
+    """v2 tier-picker checkout. Client names the tier; server picks the price."""
+
+    tier: Tier = Field(description="Tier to purchase. `free` is rejected with 400.")
 
 
 # ── Helpers ──────────────────────────────────────────────────────
@@ -141,6 +150,87 @@ async def create_checkout_session(
             "mode": "payment",
             "line_items": [{"price": price_id, "quantity": 1}],
             "metadata": {"supabase_user_id": user.id},
+            "customer_email": user.email,
+            "success_url": f"{origin}/purchase/success?session_id={{CHECKOUT_SESSION_ID}}",
+            "cancel_url": f"{origin}/new",
+            "allow_promotion_codes": True,
+        }
+    )
+
+    return CheckoutSessionResponse(url=session.url)
+
+
+# ── POST /stripe/checkout/v2 ─────────────────────────────────────
+# v2 tier-picker checkout. Client names the tier; server resolves the
+# Stripe price id from settings and opens a Checkout Session. v1
+# `/stripe/checkout` stays untouched for any v1 client still in the wild.
+
+
+def _stripe_price_for_tier(tier: Tier) -> str:
+    """Map a v2 Tier to its configured Stripe Price id."""
+
+    if tier == Tier.MONTH:
+        return settings.stripe_price_month
+    if tier == Tier.SEASON:
+        return settings.stripe_price_season
+    if tier == Tier.LIFETIME:
+        return settings.stripe_price_lifetime
+    raise ValueError(f"Tier {tier!r} is not purchasable via Stripe checkout")
+
+
+_V2_TIER_FROM_PRICE: dict[str, Tier] = {}
+
+
+def _refresh_v2_price_lookup() -> dict[str, Tier]:
+    """Lazy dict from price id -> tier. Recomputed each call so settings
+    overrides in tests reflect immediately."""
+
+    return {
+        settings.stripe_price_month: Tier.MONTH,
+        settings.stripe_price_season: Tier.SEASON,
+        settings.stripe_price_lifetime: Tier.LIFETIME,
+    }
+
+
+@router.post(
+    "/checkout/v2",
+    response_model=CheckoutSessionResponse,
+    responses={
+        400: {"model": ErrorResponse},
+        401: {"model": ErrorResponse},
+        500: {"model": ErrorResponse},
+    },
+)
+async def create_v2_checkout_session(
+    request: Request,
+    body: CheckoutV2Request,
+    user: Optional[AuthUser] = Depends(get_optional_user),
+) -> CheckoutSessionResponse | JSONResponse:
+    if not user:
+        return _error("Unauthorized", 401)
+
+    if body.tier == Tier.FREE:
+        return _error("free tier is not purchasable", 400)
+
+    try:
+        price_id = _stripe_price_for_tier(body.tier)
+    except ValueError as exc:
+        return _error(str(exc), 400)
+
+    if not price_id:
+        return _error(f"Tier {body.tier.value!r} not configured", 500)
+
+    origin = request.headers.get("origin", "https://roam.ecodia.au")
+
+    client = _get_stripe()
+    session = client.checkout.sessions.create(
+        params={  # type: ignore[arg-type]
+            "mode": "payment",
+            "line_items": [{"price": price_id, "quantity": 1}],
+            "metadata": {
+                "supabase_user_id": user.id,
+                "v2_tier": body.tier.value,
+            },
             "customer_email": user.email,
             "success_url": f"{origin}/purchase/success?session_id={{CHECKOUT_SESSION_ID}}",
             "cancel_url": f"{origin}/new",
@@ -295,6 +385,8 @@ async def _handle_stripe_webhook(request: Request) -> JSONResponse:
             )
             return _error("No user ID in metadata", 400)
 
+        # v1 path: keep writing the binary user_entitlements row so existing
+        # Cap clients continue to unlock.
         customer = session.get("customer")
         payment_intent = session.get("payment_intent")
         await _upsert_entitlement(
@@ -305,9 +397,95 @@ async def _handle_stripe_webhook(request: Request) -> JSONResponse:
             if isinstance(payment_intent, str)
             else None,
         )
-        logger.info("[stripe/webhook] Unlocked user %s via Stripe", user_id)
+        logger.info("[stripe/webhook] Unlocked user %s via Stripe (v1)", user_id)
+
+        # v2 path: if the session names a v2 tier (via metadata.v2_tier set by
+        # /stripe/checkout/v2 OR via a line-item price that matches one of the
+        # configured v2 price ids), also write the tiered entitlements row.
+        # Doing both keeps the data substrate consistent during the v1->v2
+        # transition: v1 readers still see user_entitlements, v2 readers see
+        # entitlements, and a user who buys on web today is entitled in both
+        # worlds.
+        v2_tier = _resolve_v2_tier_from_session(session)
+        if v2_tier is not None and isinstance(payment_intent, str):
+            purchase_time = datetime.now(timezone.utc)
+            try:
+                upsert_entitlement(
+                    user_id=user_id,
+                    tier=v2_tier,
+                    source_platform=SourcePlatform.WEB,
+                    product_id=_v2_product_id_for_tier(v2_tier),
+                    transaction_id=payment_intent,
+                    expires_at=expiry_for_tier(v2_tier, purchase_time),
+                    raw_receipt={
+                        "stripe_session_id": session.get("id"),
+                        "stripe_customer": customer
+                        if isinstance(customer, str)
+                        else None,
+                        "metadata": session.get("metadata"),
+                    },
+                )
+                logger.info(
+                    "[stripe/webhook] Granted v2 tier=%s for user %s (txn=%s)",
+                    v2_tier.value,
+                    user_id,
+                    payment_intent,
+                )
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.error(
+                    "[stripe/webhook] v2 entitlement upsert failed for user %s: %s",
+                    user_id,
+                    exc,
+                    exc_info=True,
+                )
 
     return JSONResponse(ReceivedResponse(received=True).model_dump())
+
+
+def _resolve_v2_tier_from_session(session: dict) -> Optional[Tier]:
+    """Pick the v2 tier for a Checkout Session, or None if it's a v1 purchase.
+
+    Two resolution paths:
+      1. `metadata.v2_tier` set by `/stripe/checkout/v2` is authoritative.
+      2. Fallback: scan `line_items[].price.id` (when expanded) for a match
+         against the configured `STRIPE_PRICE_MONTH/_SEASON/_LIFETIME` env.
+    """
+
+    md_tier = (session.get("metadata") or {}).get("v2_tier")
+    if md_tier:
+        try:
+            return Tier(md_tier)
+        except ValueError:
+            logger.warning(
+                "[stripe/webhook] metadata.v2_tier=%r is not a valid Tier", md_tier
+            )
+            return None
+
+    lookup = _refresh_v2_price_lookup()
+    # `line_items` is only present when the webhook payload was expanded;
+    # default Checkout sessions don't include it. We can't expand from inside
+    # the webhook handler without a Stripe round-trip, so this fallback only
+    # fires when the caller pre-expanded line_items at session creation.
+    line_items = (session.get("line_items") or {}).get("data") or []
+    for li in line_items:
+        price = (li.get("price") or {}).get("id")
+        if price and price in lookup:
+            return lookup[price]
+    return None
+
+
+def _v2_product_id_for_tier(tier: Tier) -> str:
+    """Map a v2 Tier to its configured public product id (the value that lands
+    in entitlements.product_id, kept in lockstep with the ASC/Play product ids
+    so clients see one identifier across all three storefronts)."""
+
+    if tier == Tier.MONTH:
+        return settings.product_id_month
+    if tier == Tier.SEASON:
+        return settings.product_id_season
+    if tier == Tier.LIFETIME:
+        return settings.product_id_lifetime
+    raise ValueError(f"Tier {tier!r} has no v2 product id")
 
 
 async def _handle_revenuecat_webhook(request: Request) -> JSONResponse:

@@ -56,7 +56,10 @@ class _Query:
     """
 
     def __init__(self, rows: list[dict[str, Any]]) -> None:
-        self._rows = list(rows)
+        # Hold the actual list (NOT a copy) so upserts mutate the table the
+        # FakeSupabase exposes via `.tables[name]`. Reads still snapshot
+        # locally inside execute() to avoid filter-mutates-source surprises.
+        self._rows = rows
         self._filters: list[tuple[str, Any]] = []
         self._order: list[tuple[str, bool, bool]] = []  # (col, desc, nulls_first)
         self._limit: int | None = None
@@ -185,9 +188,11 @@ def fake_supabase(monkeypatch: pytest.MonkeyPatch) -> FakeSupabase:
 
     import app.core.supabase_admin as supa_mod
     import app.services.entitlements as ent_mod
+    import app.api.stripe as stripe_mod
 
     monkeypatch.setattr(supa_mod, "get_supabase_admin", lambda: fake)
     monkeypatch.setattr(ent_mod, "get_supabase_admin", lambda: fake)
+    monkeypatch.setattr(stripe_mod, "get_supabase_admin", lambda: fake)
 
     return fake
 

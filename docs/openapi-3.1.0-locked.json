@@ -724,6 +724,20 @@
         "title": "CheckoutSessionResponse",
         "type": "object"
       },
+      "CheckoutV2Request": {
+        "description": "v2 tier-picker checkout. Client names the tier; server picks the price.",
+        "properties": {
+          "tier": {
+            "$ref": "#/components/schemas/Tier",
+            "description": "Tier to purchase. `free` is rejected with 400."
+          }
+        },
+        "required": [
+          "tier"
+        ],
+        "title": "CheckoutV2Request",
+        "type": "object"
+      },
       "ConfirmRequest": {
         "properties": {
           "session_id": {
@@ -9521,6 +9535,77 @@
           }
         },
         "summary": "Create Checkout Session",
+        "tags": [
+          "stripe"
+        ]
+      }
+    },
+    "/stripe/checkout/v2": {
+      "post": {
+        "operationId": "create_v2_checkout_session_stripe_checkout_v2_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckoutV2Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutSessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Create V2 Checkout Session",
         "tags": [
           "stripe"
         ]

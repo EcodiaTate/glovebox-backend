@@ -5,8 +5,8 @@ end-to-end. Conductor reads this file to verify progress; updated after every
 feature batch.
 
 ## Phase
-**A + B + C + D - shipped 2026-05-31.** Moving to E (unified POST
-/entitlement/redeem).
+**A + B + C + D + E - shipped 2026-05-31.** Moving to F (product-ID
+configuration in ASC + Play + Stripe).
 
 ## Discoveries flagged to conductor (need conductor decision or action)
 
@@ -107,7 +107,16 @@ feature batch.
 - [ ] Conductor: add `au.ecodia.roam` to the Play uploader service-account
       app access list + mount the SA JSON to Cloud Run (path or
       GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_B64 env)
-### Phase E - Unified POST /entitlement/redeem + grandfather (pending)
+### Phase E - Unified POST /entitlement/redeem + grandfather (shipped 2026-05-31)
+- [x] `POST /entitlement/redeem` accepts {platform, product_id, receipt}
+      and routes to apple_receipt / play_purchase per platform
+- [x] Web + legacy platforms rejected with 400
+- [x] Grandfather: verified `roam_unlimited` SKU on iOS or Android always
+      lands as Lifetime regardless of client-requested product_id
+- [x] Idempotent on (source_platform, transaction_id) - duplicate
+      redemptions return the same `granted=True` shape
+- [x] Android `purchase_state != 0` (pending / canceled) returns 403
+- [x] 13 new tests; CI green (61/61); locked OpenAPI 52 routes
 ### Phase F - Product ID configuration in ASC/Play/Stripe (pending)
 
 ## Last Fly deploy version

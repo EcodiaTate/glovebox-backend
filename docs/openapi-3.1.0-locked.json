@@ -5346,6 +5346,58 @@
         "title": "ReceivedResponse",
         "type": "object"
       },
+      "RedeemRequest": {
+        "description": "Client-supplied receipt for server verification.\n\nThe `receipt` shape is platform-specific (Apple `signedTransactionInfo`\nJWS, Google purchase token + product id, or Stripe Checkout Session id).\nThe receipt is opaque to the request schema; verification happens in the\nplatform-specific service layer.",
+        "properties": {
+          "platform": {
+            "$ref": "#/components/schemas/SourcePlatform",
+            "description": "Where the purchase was made. `legacy` is not accepted by the redeem endpoint - it is a server-side synthesis only."
+          },
+          "product_id": {
+            "description": "Platform product identifier (e.g. `glovebox_pass_month`).",
+            "title": "Product Id",
+            "type": "string"
+          },
+          "receipt": {
+            "description": "Platform-specific verification payload. iOS: `{signed_transaction_info: <JWS>}`. Android: `{purchase_token: str, product_id: str}`. Web: `{stripe_session_id: str}`.",
+            "title": "Receipt",
+            "type": "object"
+          }
+        },
+        "required": [
+          "platform",
+          "product_id",
+          "receipt"
+        ],
+        "title": "RedeemRequest",
+        "type": "object"
+      },
+      "RedeemResponse": {
+        "description": "Result of a redeem call - same shape as GET /entitlement after success.",
+        "properties": {
+          "entitlement": {
+            "$ref": "#/components/schemas/EntitlementResponse",
+            "description": "The user's entitlement after the redeem attempt. On `granted=false` this is the prior tier unchanged."
+          },
+          "grandfathered": {
+            "default": false,
+            "description": "True when the receipt named the legacy `roam_unlimited` SKU and the server granted Lifetime as a result.",
+            "title": "Grandfathered",
+            "type": "boolean"
+          },
+          "granted": {
+            "description": "True when the receipt verified and an entitlement row was written or matched an existing row by (platform, transaction_id).",
+            "title": "Granted",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "granted",
+          "entitlement"
+        ],
+        "title": "RedeemResponse",
+        "type": "object"
+      },
       "RestArea": {
         "properties": {
           "distance_from_route_km": {
@@ -8223,6 +8275,88 @@
           }
         },
         "summary": "Get Entitlement",
+        "tags": [
+          "entitlement"
+        ]
+      }
+    },
+    "/entitlement/redeem": {
+      "post": {
+        "description": "Verify a platform-specific receipt and grant the corresponding tier.\n\niOS and Android receipts are verified server-to-server against Apple's\nJWS public keys / Google's Play Developer API. The web path is\ndeliberately rejected: web purchases flow through the Stripe Checkout +\nwebhook path, never through this endpoint.\n\nGrandfather behaviour: when the verified receipt names the legacy\n`roam_unlimited` SKU, the server grants `Tier.LIFETIME` regardless of\nthe tier the client suggested. The response's `grandfathered=True`\nflag tells the client to update its UI without surprise.\n\nIdempotency: the `(source_platform, transaction_id)` unique index on\n`public.entitlements` absorbs duplicate redemptions from flaky clients\nor auto-retries. The endpoint always returns the user's current\neffective entitlement after the call, so a duplicate redeem returns\nthe same `granted=True` shape as the first one.",
+        "operationId": "redeem_entitlement_entitlement_redeem_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RedeemRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedeemResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          }
+        },
+        "summary": "Redeem Entitlement",
         "tags": [
           "entitlement"
         ]

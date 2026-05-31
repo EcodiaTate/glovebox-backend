@@ -5,7 +5,8 @@ end-to-end. Conductor reads this file to verify progress; updated after every
 feature batch.
 
 ## Phase
-**A + B + C - shipped 2026-05-31.** Moving to D (Google Play).
+**A + B + C + D - shipped 2026-05-31.** Moving to E (unified POST
+/entitlement/redeem).
 
 ## Discoveries flagged to conductor (need conductor decision or action)
 
@@ -96,7 +97,16 @@ feature batch.
 - [ ] Conductor: download Apple root certs to container at
       `app/data/apple-roots/` + set `APPLE_ROOT_CERT_BUNDLE_PATH` env var
       + set `APPLE_APP_APPLE_ID` from ASC listing
-### Phase D - Google Play Developer API path (pending)
+### Phase D - Google Play Developer API path (shipped 2026-05-31)
+- [x] Added `google-api-python-client` + `google-auth` to requirements
+- [x] `app/services/play_purchase.py` -
+      `verify_purchase_token(purchase_token, product_id)`
+- [x] Service account loading: path wins over inline base64
+- [x] `roam_unlimited` grandfather flag
+- [x] 12 new tests; CI green (48/48)
+- [ ] Conductor: add `au.ecodia.roam` to the Play uploader service-account
+      app access list + mount the SA JSON to Cloud Run (path or
+      GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_B64 env)
 ### Phase E - Unified POST /entitlement/redeem + grandfather (pending)
 ### Phase F - Product ID configuration in ASC/Play/Stripe (pending)
 

@@ -204,16 +204,38 @@ async def build_bundle(
     except Exception as exc:
         logger.warning("bundle places fetch failed (non-fatal): %s", exc)
 
-    # Extract stop coordinates for corridor building
-    stop_coords: list[tuple[float, float]] = []
+    # Extract stop coordinates for corridor building.
+    #
+    # CAP: a long route's places set can be ~1000+ POIs (e.g. Brisbane->Toowoomba
+    # returns 1070). Tree-routing the corridor to every one of them produced a
+    # 124k-edge graph in ~14s WARM, and on a cold container (roam-backend + OSRM
+    # both scale to zero) the cumulative OSRM fan-out blew past Cloud Run's request
+    # timeout -> the bundle "500" the client saw. The corridor exists for offline
+    # reroute; the route spine + buffer already covers the whole route, so we only
+    # need a BOUNDED set of off-spine stops for reach. Spatially stride-sample the
+    # POIs down to a cap so the graph (and cold build time) stays small. The full
+    # places set still ships in places.json for display - only the corridor stop
+    # input is capped.
+    CORRIDOR_MAX_STOP_COORDS = 60
+    all_stop_coords: list[tuple[float, float]] = []
     if ppack and hasattr(ppack, "items") and ppack.items:
         for item in ppack.items:
-            stop_coords.append((item.lat, item.lng))
+            all_stop_coords.append((item.lat, item.lng))
+    if len(all_stop_coords) > CORRIDOR_MAX_STOP_COORDS:
+        # Stride-sample to preserve spread along the route (places come ordered
+        # along the corridor), rather than taking the first N which would cluster
+        # at the start.
+        stride = len(all_stop_coords) / CORRIDOR_MAX_STOP_COORDS
+        stop_coords = [
+            all_stop_coords[int(i * stride)] for i in range(CORRIDOR_MAX_STOP_COORDS)
+        ]
+    else:
+        stop_coords = all_stop_coords
     logger.info(
-        "corridor stop_coords: %d from places (ppack=%s, items=%d)",
+        "corridor stop_coords: %d (capped from %d) from places (ppack=%s)",
         len(stop_coords),
+        len(all_stop_coords),
         type(ppack).__name__ if ppack else "None",
-        len(ppack.items) if ppack and hasattr(ppack, "items") and ppack.items else 0,
     )
 
     # 2) Build corridor using stop locations + route spine
